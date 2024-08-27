@@ -27,17 +27,17 @@
   #{:and :class :else :false :fun :for :if :nil :or
     :print :return :super :this :true :var :while})
 
-(def token-type
+(def token-kind
   (set/union single-char-tokens multi-char-tokens literals keywords #{:eof}))
 
 (defn token:new
-  ([type]
-   (case type
-     :eof (token:new type "" nil 0)
-     (token:new type "" nil 0)))
-  ([type lexeme literal line]
-   (assert (token-type type) (str "Type " type " should be a valid TokenType"))
-   {:token/type    type
+  ([kind]
+   (case kind
+     :eof (token:new kind "" nil 0)
+     (token:new kind "" nil 0)))
+  ([kind lexeme literal line]
+   (assert (token-kind kind) (str "kind " kind " should be a valid Tokenkind"))
+   {:token/kind    kind
     :token/lexeme  lexeme
     :token/literal literal
     :token/line    line}))

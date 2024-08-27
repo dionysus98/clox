@@ -1,4 +1,4 @@
-var language = "lox";
-/ 5;
+var language = "lox is great!";
+4.5 / 5;
 // 
-+=, -*              
++=, -*

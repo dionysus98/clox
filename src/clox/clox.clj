@@ -2,21 +2,21 @@
   (:gen-class)
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [clox.scanner :as scr]))
+            [clox.lexer :as lex]))
 
 (defn lox:new [src & {fp :file-path}]
   {:lox/had-error? false
    :lox/src-file   fp
    :lox/src        src
-   :lox/scanner    nil})
+   :lox/lexer      nil})
 
 (defn run-src! [lox]
-  (let [scr (scr/new (:lox/src lox))
-        scr (scr/scan-tokens scr)]
-    (doseq [token (:scanner/tokens scr)]
+  (let [lex (lex/lexer:new (:lox/src lox))
+        lex (lex/scan-tokens lex)]
+    (doseq [token (:lexer/tokens lex)]
       (println token))
-    (assoc lox :lox/scanner scr
-           :lox/had-error? (:scanner/had-error? scr))))
+    (assoc lox :lox/lexer lex
+           :lox/had-error? (:lexer/had-error? lex))))
 
 (defn run-prompt! []
   (print "> ")
@@ -33,7 +33,7 @@
   (let [argc (count args)]
     (cond
       (> argc 1) (do
-                   (println "Usage: clox [script]")
+                   (println "Usage: clox [lexipt]")
                    (System/exit 64))
       (= argc 1) (run-file! (first args))
       :else (run-prompt!))))
