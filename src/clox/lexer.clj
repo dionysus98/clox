@@ -1,5 +1,5 @@
 (ns clox.lexer
-  (:require [clox.token :refer [token:new]]))
+  (:require [clox.token :as t]))
 
 (defn adv "advance" [lex]
   (update lex :lexer/current inc))
@@ -19,7 +19,7 @@
   ([lex token-kind] (add-token lex token-kind nil))
   ([{:lexer/keys [start current src line] :as lex} token-kind literal]
    (let [text  (subs src start current)]
-     (update lex :lexer/tokens conj (token:new token-kind text literal line)))))
+     (update lex :lexer/tokens conj (t/token:new token-kind text literal line)))))
 
 (defn match? [{:lexer/keys [src current] :as lex}
               expected]
@@ -49,14 +49,24 @@
 (defn alphanumeric? [^Character c]
   (or (alpha? c) (digit? c)))
 
+(defn <src
+  "returns the substring based on the start and current of the lexer"
+  ^String [lex]
+  (subs (:lexer/src lex)
+        (:lexer/start lex)
+        (:lexer/current lex)))
+
 (defn scan-ident [lex]
-  (let [lex (loop [lex lex]
-              (let [nxt (pk lex)]
-                (if (and (not (at-end? lex))
-                         (alphanumeric? nxt))
-                  (recur (adv lex))
-                  lex)))]
-    (add-token lex :ident)))
+  (let [lex  (loop [lex lex]
+               (let [nxt (pk lex)]
+                 (if (and (not (at-end? lex))
+                          (alphanumeric? nxt))
+                   (recur (adv lex))
+                   lex)))
+        kind (some-> lex <src keyword t/keywords)]
+    (if (keyword? kind)
+      (add-token lex kind)
+      (add-token lex :ident))))
 
 (defn scan-number [lex]
   (let [frwd (fn [lex]
@@ -67,11 +77,7 @@
                      (recur (adv lex))
                      lex))))
         lex  (frwd lex)
-        nxt  (pk lex)
-        <src (fn [lex]
-               (subs (:lexer/src lex)
-                     (:lexer/start lex)
-                     (:lexer/current lex)))]
+        nxt  (pk lex)]
     (if (and (= nxt \.)
              (digit? (pk-next lex)))
       (let [lex (frwd (adv lex))]
@@ -146,7 +152,7 @@
                     (assoc :lexer/start current)
                     scan-token
                     scan-next)
-                (update lex :lexer/tokens conj (token:new :eof "" nil line))))]
+                (update lex :lexer/tokens conj (t/token:new :eof "" nil line))))]
     (run lexer)))
 
 (defn lexer:new [^String src]
