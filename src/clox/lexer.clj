@@ -1,5 +1,6 @@
 (ns clox.lexer
-  (:require [clox.token :as t]))
+  (:require [clox.token :as t]
+            [clojure.string :as str]))
 
 (defn adv "advance" [lex]
   (update lex :lexer/current inc))
@@ -63,10 +64,13 @@
                           (alphanumeric? nxt))
                    (recur (adv lex))
                    lex)))
-        kind (some-> lex <src keyword t/keywords)]
+        kind (some-> lex <src
+                     str/upper-case
+                     keyword
+                     t/keywords)]
     (if (keyword? kind)
       (add-token lex kind)
-      (add-token lex :ident))))
+      (add-token lex :IDENT))))
 
 (defn scan-number [lex]
   (let [frwd (fn [lex]
@@ -81,8 +85,8 @@
     (if (and (= nxt \.)
              (digit? (pk-next lex)))
       (let [lex (frwd (adv lex))]
-        (add-token lex :number (parse-double (<src lex))))
-      (add-token lex :number (parse-long (<src lex))))))
+        (add-token lex :NUMBER (parse-double (<src lex))))
+      (add-token lex :NUMBER (parse-long (<src lex))))))
 
 (defn scan-string [lex]
   (let [lex  (loop [lex lex]
@@ -99,7 +103,7 @@
             strv (subs (:lexer/src lex)
                        (inc (:lexer/start lex))
                        (dec (:lexer/current lex)))]
-        (add-token lex :greater strv)))))
+        (add-token lex :GREATER strv)))))
 
 (defn scan-token [lex]
   (let [cur  (:lexer/current lex)
@@ -109,35 +113,35 @@
     (case chr
       \newline (update lex :lexer/line inc)
       \space lex
-      \( (add-token lex :left-paren)
-      \) (add-token lex :right-paren)
-      \{ (add-token lex :left-brace)
-      \} (add-token lex :right-brace)
-      \, (add-token lex :comma)
-      \. (add-token lex :dot)
-      \- (add-token lex :minus)
-      \+ (add-token lex :plus)
-      \; (add-token lex :semicolon)
-      \* (add-token lex :star)
+      \( (add-token lex :LEFT-PAREN)
+      \) (add-token lex :RIGHT-PAREN)
+      \{ (add-token lex :LEFT-BRACE)
+      \} (add-token lex :RIGHT-BRACE)
+      \, (add-token lex :COMMA)
+      \. (add-token lex :DOT)
+      \- (add-token lex :MINUS)
+      \+ (add-token lex :PLUS)
+      \; (add-token lex :SEMICOLON)
+      \* (add-token lex :STAR)
       \! (if (match? lex \=)
-           (add-token (adv lex) :bang-equal)
-           (add-token lex :bang))
+           (add-token (adv lex) :BANG-EQUAL)
+           (add-token lex :BANG))
       \= (if (match? lex \=)
-           (add-token (adv lex) :equal-equal)
-           (add-token lex :equal))
+           (add-token (adv lex) :EQUAL-EQUAL)
+           (add-token lex :EQUAL))
       \< (if (match? lex \=)
-           (add-token (adv lex) :less-equal)
-           (add-token lex :less))
+           (add-token (adv lex) :LESS-EQUAL)
+           (add-token lex :LESS))
       \> (if (match? lex \=)
-           (add-token (adv lex) :greater-equal)
-           (add-token lex :greater))
+           (add-token (adv lex) :GREATER-EQUAL)
+           (add-token lex :GREATER))
       \/ (if (match? lex \/)
            (loop [lex lex]
              (if (and (not= (pk lex) \newline)
                       (not (at-end? lex)))
                (recur (adv lex))
                lex))
-           (add-token lex :slash))
+           (add-token lex :SLASH))
       \"  (scan-string lex)
       (cond
         (digit? chr) (scan-number lex)
@@ -152,7 +156,7 @@
                     (assoc :lexer/start current)
                     scan-token
                     scan-next)
-                (update lex :lexer/tokens conj (t/token:new :eof "" nil line))))]
+                (update lex :lexer/tokens conj (t/token:new :EOF "" nil line))))]
     (run lexer)))
 
 (defn lexer:new [^String src]

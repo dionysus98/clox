@@ -2,38 +2,38 @@
   (:require [clojure.set :as set]))
 
 (def single-char-tokens
-  #{:left-paren
-    :right-paren
-    :left-brace
-    :right-brace
-    :comma
-    :dot
-    :minus
-    :plus
-    :semicolon
-    :slash
-    :star})
+  #{:LEFT-PAREN
+    :RIGHT-PAREN
+    :LEFT-BRACE
+    :RIGHT-BRACE
+    :COMMA
+    :DOT
+    :MINUS
+    :PLUS
+    :SEMICOLON
+    :SLASH
+    :STAR})
 
 (def multi-char-tokens
-  #{:bang, :bang-equal
-    :equal, :equal-equal
-    :greater, :greater-equal
-    :less, :less-equal})
+  #{:BANG, :BANG-EQUAL
+    :EQUAL, :EQUAL-EQUAL
+    :GREATER, :GREATER-EQUAL
+    :LESS, :LESS-EQUAL})
 
 (def literals
-  #{:ident :string :number})
+  #{:IDENT :STRING :NUMBER})
 
 (def keywords
-  #{:and :class :else :false :fun :for :if :nil :or
-    :print :return :super :this :true :var :while})
+  #{:AND :CLASS :ELSE :FALSE :FUN :FOR :IF :NIL :OR
+    :PRINT :RETURN :SUPER :THIS :TRUE :VAR :WHILE})
 
 (def token-kind
-  (set/union single-char-tokens multi-char-tokens literals keywords #{:eof}))
+  (set/union single-char-tokens multi-char-tokens literals keywords #{:EOF}))
 
 (defn token:new
   ([kind]
    (case kind
-     :eof (token:new kind "" nil 0)
+     :EOF (token:new kind "" nil 0)
      (token:new kind "" nil 0)))
   ([kind lexeme literal line]
    (assert (token-kind kind) (str "kind " kind " should be a valid Tokenkind"))
