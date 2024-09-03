@@ -4,7 +4,7 @@
 
 (def lib 'net.clojars.clox/clox)
 (def version "0.1.0-SNAPSHOT")
-(def main 'clox.clox)
+(def main 'clox.main)
 (def class-dir "target/classes")
 
 (defn test "Run all the tests." [opts]

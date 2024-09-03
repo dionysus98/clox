@@ -1,8 +1,9 @@
-(ns clox.clox
+(ns clox.main
   (:gen-class)
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [clox.lexer :as lex]))
+            [clox.lexer :as lex]
+            [clox.ast.printer :as printer]))
 
 (defn lox:new [src & {fp :file-path}]
   {:lox/had-error? false
@@ -12,11 +13,13 @@
 
 (defn run-src! [lox]
   (let [lex (lex/lexer:new (:lox/src lox))
-        lex (lex/scan-tokens lex)]
+        lex (lex/scan-tokens lex)
+        lox (assoc lox
+                   :lox/lexer lex
+                   :lox/had-error? (:lexer/had-error? lex))]
     (doseq [token (:lexer/tokens lex)]
       (println token))
-    (assoc lox :lox/lexer lex
-           :lox/had-error? (:lexer/had-error? lex))))
+    lox))
 
 (defn run-prompt! []
   (print "> ")

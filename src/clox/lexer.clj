@@ -2,14 +2,21 @@
   (:require [clox.token :as t]
             [clojure.string :as str]))
 
+(defn <src
+  "returns the substring based on the start and current of the lexer"
+  ^String [lex]
+  (subs (:lexer/src lex)
+        (:lexer/start lex)
+        (:lexer/current lex)))
+
 (defn adv "advance" [lex]
   (update lex :lexer/current inc))
 
 (defn report!
   ([lex ^String msg]
-   (report! lex "" msg))
+   (report! lex (<src lex) msg))
   ([lex ^String where ^String msg]
-   (println (str "[line " (:lexer/line lex) "] Error" where ": " msg))
+   (println (str "[line " (:lexer/line lex) "] Error " where ": " msg))
    (assoc lex :lexer/had-error? true)))
 
 (defn at-end? [lex]
@@ -49,13 +56,6 @@
 
 (defn alphanumeric? [^Character c]
   (or (alpha? c) (digit? c)))
-
-(defn <src
-  "returns the substring based on the start and current of the lexer"
-  ^String [lex]
-  (subs (:lexer/src lex)
-        (:lexer/start lex)
-        (:lexer/current lex)))
 
 (defn scan-ident [lex]
   (let [lex  (loop [lex lex]
