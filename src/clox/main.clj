@@ -2,8 +2,7 @@
   (:gen-class)
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [clox.lexer :as lex]
-            [clox.ast.printer :as printer]))
+            [clox.lexer :as lex]))
 
 (defn lox:new [src & {fp :file-path}]
   {:lox/had-error? false

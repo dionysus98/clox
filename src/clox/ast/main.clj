@@ -3,7 +3,6 @@
             [clojure.string :as str]))
 
 (defprotocol Expr
-  #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
   (accept [this visitor]))
 
 (def grammar
@@ -24,23 +23,10 @@
             :key    k
             :fields fields}))))
 
+; :c defines types based on the grammer provided. :c
 (doseq [pg   (not-empty parsed-grammar)
         :let [sym (symbol (:key pg))
               type (keyword (str/lower-case (:key pg)))]]
   (eval `(deftype ~sym ~(mapv symbol (:fields pg))
            Expr
            ~(list 'accept '[this visitor] (list 'visitor type 'this)))))
-
-#_(when-let [data (not-empty parsed-grammar)]
-    (eval `(defprotocol Visitor
-             ~@(for [pg   data
-                     :let [proto (symbol (str "visit" (:name pg)))]]
-                 (list proto '[expr])))))
-
-#_(doseq [pg   (not-empty parsed-grammar)
-          :let [visitor (symbol (str "visit" (:name pg)))]]
-    (eval `(defrecord ~(symbol (:name pg)) ~(mapv symbol (:fields pg))
-             Expr
-             ~(list 'accept ['this] (list visitor 'this))
-             Visitor
-             ~(list visitor ['this] 'this)))) 

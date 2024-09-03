@@ -1,6 +1,5 @@
 (ns clox.main-test
-  (:require [clojure.test :refer :all]
-            [clox.main :refer :all]))
+  (:require [clojure.test :refer [deftest testing is]]))
 
 (deftest a-test
   (testing "FIXME, I fail."
