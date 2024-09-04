@@ -103,7 +103,7 @@
             strv (subs (:lexer/src lex)
                        (inc (:lexer/start lex))
                        (dec (:lexer/current lex)))]
-        (add-token lex :GREATER strv)))))
+        (add-token lex :STRING strv)))))
 
 (defn scan-token [lex]
   (let [cur  (:lexer/current lex)
