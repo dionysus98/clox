@@ -148,7 +148,7 @@
         (alpha? chr) (scan-ident lex)
         :else (report! lex "Unexpected character.")))))
 
-(defn scan-tokens [lexer]
+(defn lex "scans the tokens" [lexer]
   (let [run (fn scan-next [{:lexer/keys [current line]
                             :as           lex}]
               (if-not (at-end? lex)
@@ -168,12 +168,13 @@
    :lexer/had-error? false})
 
 (comment
-  (scan-tokens (lexer:new "var * = (+ 5 8); // asasas
+  (lex (lexer:new "var * = (+ 5 8); // asasas
                                   asas"))
+
+  (lex (lexer:new "(* -123 45.67)"))
 
   (loop [lex (lexer:new (slurp "examples/main.clox"))]
     (println (pr-str (pk lex)))
     (when-not (at-end? lex)
       (recur (update lex :lexer/current inc))))
   :rcf)
-

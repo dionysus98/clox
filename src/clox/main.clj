@@ -1,23 +1,35 @@
 (ns clox.main
   (:gen-class)
   (:require [clojure.java.io :as io]
+            [clojure.pprint :as pprint]
+            [clojure.set :as set]
             [clojure.string :as str]
-            [clox.lexer :as lex]))
+            [clox.lexer :as lex]
+            [clox.parser :as psr]))
 
 (defn lox:new [src & {fp :file-path}]
   {:lox/had-error? false
+   :lox/errors     #{}
    :lox/src-file   fp
    :lox/src        src
    :lox/lexer      nil})
 
 (defn run-src! [lox]
-  (let [lex (lex/lexer:new (:lox/src lox))
-        lex (lex/scan-tokens lex)
-        lox (assoc lox
-                   :lox/lexer lex
-                   :lox/had-error? (:lexer/had-error? lex))]
-    (doseq [token (:lexer/tokens lex)]
-      (println token))
+  (let [lexer  (->> (:lox/src lox)
+                    lex/lexer:new
+                    lex/lex)
+        lexed  (-> lox
+                   (assoc :lox/lexer lexer
+                          :lox/had-error? (:lexer/had-error? lexer))
+                   (update :lox/errors set/union (:lexer/errors lexer)))
+        parser (->> (:lexer/tokens lexer)
+                    psr/parser:new
+                    psr/parse)
+        parsed (-> lexed
+                   (assoc :lox/parser parser
+                          :lox/had-error? (:parser/had-error? parser))
+                   (update :lox/errors set/union (:parser/errors parser)))]
+    (pprint/pprint parsed)
     lox))
 
 (defn run-prompt! []
