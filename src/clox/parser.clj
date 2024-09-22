@@ -4,6 +4,9 @@
 (defn expr+ [psr expr]
   (assoc psr :parser/expr expr))
 
+(defn stmt+ [psr stmt]
+  (assoc psr :parser/stmt stmt))
+
 (defn pk "current token" [psr]
   (nth (:parser/tokens psr) (:parser/current psr)))
 
@@ -89,11 +92,11 @@
 (defmethod parser :term [_ psr]
   (let [parse (fn >parse< [psr-]
                 (if (match psr- :MINUS :PLUS)
-                  (let [expr   (:parser/expr psr-)
+                  (let [left   (:parser/expr psr-)
                         psr-   (adv psr-)
                         op     (prev psr-)
-                        right- (parser :factor psr)
-                        expr   (ast/->Binary expr op (:parser/right right-))]
+                        right- (parser :factor psr-)
+                        expr   (ast/->Binary left op (:parser/expr right-))]
                     (>parse< (expr+ right- expr)))
                   psr-))]
     (parse (parser :factor psr))))
@@ -107,7 +110,7 @@
                         psr-   (adv psr-)
                         op     (prev psr-)
                         right- (parser :term psr-)
-                        expr   (ast/->Binary expr op (:parser/right right-))]
+                        expr   (ast/->Binary expr op (:parser/expr right-))]
                     (>parse< (expr+ right- expr)))
                   psr-))]
     (parse (parser :term psr))))
@@ -119,7 +122,7 @@
                         psr-  (adv psr-)
                         op    (prev psr-)
                         right- (parser :comparison psr-)
-                        expr  (ast/->Binary expr op (:parser/right right-))]
+                        expr  (ast/->Binary expr op (:parser/expr right-))]
                     (>parse< (expr+ right- expr)))
                   psr-))]
     (parse (parser :comparison psr))))
@@ -127,14 +130,42 @@
 (defmethod parser :expression [_ psr]
   (parser :equality psr))
 
+(defmethod parser :print-stmt [_ psr]
+  (let [psr-  (-> (parser :expression psr)
+                  (consume! :SEMICOLON "Expect ';' after value."))
+        value (:parser/expr psr-)]
+    (stmt+ psr- (ast/->Print value))))
+
+(defmethod parser :expr-stmt [_ psr]
+  (let [psr- (-> (parser :expression psr)
+                 (consume! :SEMICOLON "Expect ';' after value."))
+        expr (:parser/expr psr-)]
+    (stmt+ psr- (ast/->Expression expr))))
+
+(defmethod parser :statement [_ psr]
+  (cond
+    (match psr :PRINT) (parser :print-stmt (adv psr))
+    :else (parser :expr-stmt psr)))
+
 (defmethod parser :parser/had-error? [_ psr]
   psr)
 
-(defn parse [psr]
-  (try
-    (parser :expression psr)
-    (catch NullPointerException e (println e))
-    (catch Exception e (ex-data e))))
+#_(defn parse [psr]
+    (try
+      (parser :expression psr)
+      (catch NullPointerException e (println e))
+      (catch Exception e (ex-data e))))
+
+(defn parse
+  ([psr] (parse psr []))
+  ([psr statements]
+   (try
+     (if (!end? psr)
+       (let [stmt- (parser :statement psr)]
+         (parse stmt- (conj statements stmt-)))
+       statements)
+     (catch NullPointerException e (println e))
+     (catch Exception e (ex-data e)))))
 
 (defn synchronize [psr]
   (let [prev? (fn [psr- tk] (= (:token/kind (prev psr-)) tk))

@@ -1,36 +1,41 @@
 (ns clox.main
   (:gen-class)
   (:require [clojure.java.io :as io]
-            [clojure.pprint :as pprint]
             [clojure.set :as set]
             [clojure.string :as str]
+            [clox.util :as util]
             [clox.lexer :as lex]
-            [clox.parser :as psr]))
+            [clox.parser :as psr]
+            [clox.interpreter :as intr]))
 
 (defn lox:new [src & {fp :file-path}]
-  {:lox/had-error? false
-   :lox/errors     #{}
-   :lox/src-file   fp
-   :lox/src        src
-   :lox/lexer      nil})
+  {:lox/had-error?     false
+   :lox/runtime-error? false
+   :lox/errors         #{}
+   :lox/src-file       fp
+   :lox/src            src
+   :lox/lexer          nil})
 
 (defn run-src! [lox]
   (let [lexer  (->> (:lox/src lox)
                     lex/lexer:new
                     lex/lex)
-        lexed  (-> lox
-                   (assoc :lox/lexer lexer
-                          :lox/had-error? (:lexer/had-error? lexer))
-                   (update :lox/errors set/union (:lexer/errors lexer)))
         parser (->> (:lexer/tokens lexer)
                     psr/parser:new
                     psr/parse)
-        parsed (-> lexed
-                   (assoc :lox/parser parser
-                          :lox/had-error? (:parser/had-error? parser))
-                   (update :lox/errors set/union (:parser/errors parser)))]
-    (pprint/pprint parsed)
-    lox))
+        intrd  (intr/interpret (mapv :parser/stmt parser))
+        lox (-> lox
+                (assoc :lox/lexer lexer
+                       :lox/parser parser
+                       :lox/interpreter intrd
+                       :lox/had-error? (or (:lexer/had-error? lexer)
+                                           (:parser/had-error? parser))
+                       :lox/runtime-error? (:interpreter/runtime-error? intrd))
+                (update :lox/errors set/union (:lexer/errors lexer) (:parser/errors parser)))]
+    ;; (util/println-> lox)
+    lox
+    ;; 
+    ))
 
 (defn run-prompt! []
   (print "> ")
@@ -41,7 +46,10 @@
 (defn run-file! [^String file-path]
   (let [fl (io/file file-path)]
     (assert (.exists fl) (str "filepath doesn't exist " file-path))
-    (run-src! (lox:new (slurp fl) :file-path file-path))))
+    (let [lox (run-src! (lox:new (slurp fl) :file-path file-path))]
+      (cond
+        (:lox/had-error? lox) (System/exit 65)
+        (:lox/runtime-error? lox) (System/exit 70)))))
 
 (defn lox! [args]
   (let [argc (count args)]

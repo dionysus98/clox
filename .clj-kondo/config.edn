@@ -1,0 +1,1 @@
+{:lint-as {clox.util/println-> clojure.core/->}}

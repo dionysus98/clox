@@ -10,7 +10,7 @@
 (defn parenthesize [name & exprs]
   (str
    "(" name " "
-   (str/join " " (map #(ast/accept % print-visitor) exprs))
+   (str/join " " (map #(.accept % print-visitor) exprs))
    ")"))
 
 (defmethod print-visitor :binary [_ expr]
@@ -31,4 +31,4 @@
 
 (deftype AstPrinter [expr]
   AstPrinterProtocol
-  (print! [this] (ast/accept (.expr this) print-visitor)))
+  (print! [this] (.accept (.expr this) print-visitor)))
