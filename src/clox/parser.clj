@@ -49,6 +49,25 @@
     (adv psr)
     (error! psr msg)))
 
+(defn synchronize [psr]
+  (let [prev? (fn [psr- tk] (= (:token/kind (prev psr-)) tk))
+        pk?   (fn [psr-]
+                (some #{(:token/kind (pk psr-))}
+                      #{:CLASS
+                        :FUN
+                        :VAR
+                        :FOR
+                        :IF
+                        :WHILE
+                        :PRINT
+                        :RETURN}))]
+    (loop [psr- (adv psr)]
+      (cond
+        (end? psr-) psr-
+        (prev? psr- :SEMICOLON) psr-
+        (pk? psr-) psr-
+        :else (recur (adv psr-))))))
+
 (defmulti parser
   (fn [rule psr]
     (if (:parser/had-error? psr)
@@ -62,10 +81,14 @@
       (?? psr :FALSE) (p> psr (ast/->Literal false))
       (?? psr :TRUE)  (p> psr (ast/->Literal true))
       (?? psr :NIL)   (p> psr (ast/->Literal nil))
-      (?? psr :NUMBER :STRING) (p> psr (ast/->Literal (:token/literal (pk psr))))
-      (?? psr :LEFT-PAREN) (let [psr (-> (parser :expression (adv psr))
-                                         (consume! :RIGHT-PAREN "Expect ')' after expression."))]
-                             (assoc psr :parser/expr (ast/->Grouping (:parser/expr psr))))
+      (?? psr
+          :NUMBER
+          :STRING)    (p> psr (ast/->Literal (:token/literal (pk psr))))
+      (?? psr :IDENT) (p> psr (ast/->Variable (pk psr)))
+      (?? psr
+          :LEFT-PAREN) (let [psr (-> (parser :expression (adv psr))
+                                     (consume! :RIGHT-PAREN "Expect ')' after expression."))]
+                         (assoc psr :parser/expr (ast/->Grouping (:parser/expr psr))))
       :else (error! psr "Expected Expression"))))
 
 (defmethod parser :unary [_ psr]
@@ -147,44 +170,39 @@
     (match psr :PRINT) (parser :print-stmt (adv psr))
     :else (parser :expr-stmt psr)))
 
+(defmethod parser :var-decl [_ psr]
+  (let [psr- (consume! psr :IDENT "Expect variable name.")
+        psr- (if (match psr- :EQUAL)
+               (parser :expression (adv psr-))
+               psr-)
+        psr- (consume! psr- :SEMICOLON "Expect ';' after variable declaration.")
+        expr (:parser/expr psr-)]
+    (stmt+ psr- (ast/->Var expr))))
+
+(defmethod parser :declaration [_ psr]
+  (try
+    (cond
+      (match psr :VAR) (parser :var-decl (adv psr))
+      :else (parser :statement psr))
+    (catch Exception e
+      (println "Error at parser :Declaration\n"
+               e)
+      (synchronize psr))))
+
 (defmethod parser :parser/had-error? [_ psr]
   psr)
-
-#_(defn parse [psr]
-    (try
-      (parser :expression psr)
-      (catch NullPointerException e (println e))
-      (catch Exception e (ex-data e))))
 
 (defn parse
   ([psr] (parse psr []))
   ([psr statements]
    (try
      (if (!end? psr)
-       (let [stmt- (parser :statement psr)]
-         (parse stmt- (conj statements stmt-)))
+       (let [;;  stmt- (parser :statement psr)
+             psr- (parser :declaration psr)]
+         (parse psr- (conj statements psr-)))
        statements)
      (catch NullPointerException e (println e))
      (catch Exception e (ex-data e)))))
-
-(defn synchronize [psr]
-  (let [prev? (fn [psr- tk] (= (:token/kind (prev psr-)) tk))
-        pk?   (fn [psr-]
-                (some #{(:token/kind (pk psr-))}
-                      #{:CLASS
-                        :FUN
-                        :VAR
-                        :FOR
-                        :IF
-                        :WHILE
-                        :PRINT
-                        :RETURN}))]
-    (loop [psr- (adv psr)]
-      (cond
-        (end? psr-) psr-
-        (prev? psr- :SEMICOLON) psr-
-        (pk? psr-) psr-
-        :else (recur (adv psr-))))))
 
 (defn parser:new [tokens]
   {:parser/current    0

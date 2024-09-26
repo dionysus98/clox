@@ -86,7 +86,7 @@
              (digit? (pk-next lex)))
       (let [lex (frwd (adv lex))]
         (add-token lex :NUMBER (parse-double (<src lex))))
-      (add-token lex :NUMBER (parse-long (<src lex))))))
+      (add-token lex :NUMBER (double (parse-long (<src lex)))))))
 
 (defn scan-string [lex]
   (let [lex  (loop [lex lex]

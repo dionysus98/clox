@@ -23,16 +23,18 @@
         parser (->> (:lexer/tokens lexer)
                     psr/parser:new
                     psr/parse)
-        intrd  (intr/interpret (mapv :parser/stmt parser))
-        lox (-> lox
-                (assoc :lox/lexer lexer
-                       :lox/parser parser
-                       :lox/interpreter intrd
-                       :lox/had-error? (or (:lexer/had-error? lexer)
-                                           (:parser/had-error? parser))
-                       :lox/runtime-error? (:interpreter/runtime-error? intrd))
-                (update :lox/errors set/union (:lexer/errors lexer) (:parser/errors parser)))]
-    ;; (util/println-> lox)
+        intrd  (->> (mapv :parser/stmt parser)
+                    (intr/interpreter:new :statements)
+                    intr/interpret)
+        lox    (-> lox
+                   (assoc :lox/lexer lexer
+                          :lox/parser parser
+                          :lox/interpreter intrd
+                          :lox/had-error? (or (:lexer/had-error? lexer)
+                                              (:parser/had-error? parser))
+                          :lox/runtime-error? (:interpreter/runtime-error? intrd))
+                   (update :lox/errors set/union (:lexer/errors lexer) (:parser/errors parser)))]
+    (util/println-> intrd)
     lox
     ;; 
     ))

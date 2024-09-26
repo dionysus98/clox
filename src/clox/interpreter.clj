@@ -1,5 +1,6 @@
 (ns clox.interpreter
-  (:require [clox.error :refer [panic! ->RuntimeError]]))
+  (:require [clox.env :as env]
+            [clox.error :refer [->RuntimeError]]))
 
 (defmulti visitor (fn [type _] type))
 
@@ -20,12 +21,12 @@
 
 (defn check-num-operand* [operator operand]
   (when-not (number? operand)
-    (panic! (->RuntimeError operator "operand must be a number."))))
+    (.panic! (->RuntimeError operator "operand must be a number."))))
 
 (defn check-num-operands*
   [operator & operands]
   (when-not (every? number? operands)
-    (panic! (->RuntimeError operator "operands must be a numbers."))))
+    (.panic! (->RuntimeError operator "operands must be a numbers."))))
 
 (defmethod visitor :literal [_ expr]
   (.value expr))
@@ -56,13 +57,13 @@
       :BANG-EQUAL  (!equal? left right)
       :EQUAL-EQUAL (equal? left right)
       :MINUS (do (check*) (- left right))
-      :SLASH (do (check*) (/ left right))
+      :SLASH (do (check*) (double (/ left right)))
       :STAR  (do (check*) (* left right))
       :PLUS  (let [?? #(every? % [left right])]
                (cond
                  (?? number?) (+ left right)
                  (?? string?) (str left right)
-                 :else (panic! (->RuntimeError op "Operands must be two numbers or two strings."))))
+                 :else (.panic! (->RuntimeError op "Operands must be two numbers or two strings."))))
       nil)))
 
 (defmethod visitor :expression [_ stmt]
@@ -71,11 +72,20 @@
 (defmethod visitor :print [_ stmt]
   (println (evaluate (.expression stmt))))
 
-(defn interpret [stmts]
+(defmethod visitor :var [_ stmt]
+  (some-> (.initializer stmt) evaluate))
+
+(defn interpreter:new [& {stmts :statements}]
+  {:interpreter/env            (env/env:new)
+   :interpreter/runtime-error? false
+   :interpreter/stmts          (or (some-> stmts not-empty vec) [])
+   :interpreter/errors         []})
+
+(defn interpret [intr]
   (try
-    {:interpreter/runtime-error? false
-     :interpreter/stmts          (mapv execute stmts)}
+    (update intr :interpreter/stmts (partial mapv execute))
     (catch Exception e
       (println e)
-      {:interpreter/errors         [e]
-       :interpreter/runtime-error? true})))
+      (-> intr
+          (assoc :interpreter/runtime-error? true)
+          (update :interpreter/errors conj e)))))

@@ -2,9 +2,6 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]))
 
-(defprotocol MINEONE
-  (accept [this]))
-
 (defn read-grammar! [fp]
   (when-let [f (io/resource fp)]
     (let [lines (line-seq (io/reader f))
@@ -24,8 +21,9 @@
     (eval `(defprotocol ~ast-type
              ~(list 'accept '[this visitor])))
     (doseq [pg   (not-empty grammar)
-            :let [sym (symbol (:type pg))
-                  type (keyword (str/lower-case (:type pg)))]]
+            :let [type-str (:type pg)
+                  sym  (symbol type-str)
+                  type (keyword (str/lower-case type-str))]]
       (eval `(deftype ~sym ~(mapv symbol (:fields pg))
                ~ast-type
                ~(list 'accept '[this visitor] (list 'visitor type 'this)))))))
