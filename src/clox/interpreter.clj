@@ -2,13 +2,31 @@
   (:require [clox.env :as env]
             [clox.error :refer [->RuntimeError]]))
 
-(defmulti visitor (fn [type _] type))
+(defn stmts+ [intr v]
+  (update intr :interpreter/stmts conj v))
+
+(defn end? "is at end"
+  ^Boolean [{cur   :interpreter/current
+             stmts :interpreter/stmts}]
+  {:pre [(number? cur) (vector? stmts)]}
+  (>= cur
+      (dec (count stmts))))
+
+(defn !end? "is not at end" ^Boolean [psr]
+  (not (end? psr)))
+
+(defn adv "advance" [intr]
+  (cond-> intr
+    (!end? intr) (update :interpreter/current inc)))
+
+(defmulti expr-visitor (fn [type _] type))
+(defmulti stmt-visitor (fn [type _] type))
 
 (defn evaluate "evaluates expression" [expr]
-  (.accept expr visitor))
+  (.accept expr expr-visitor))
 
 (defn execute "executes statement" [stmt]
-  (.accept stmt visitor))
+  (.accept stmt stmt-visitor))
 
 (defn equal? [a b]
   (cond
@@ -28,13 +46,13 @@
   (when-not (every? number? operands)
     (.panic! (->RuntimeError operator "operands must be a numbers."))))
 
-(defmethod visitor :literal [_ expr]
+(defmethod expr-visitor :literal [_ expr]
   (.value expr))
 
-(defmethod visitor :grouping [_ expr]
+(defmethod expr-visitor :grouping [_ expr]
   (evaluate (.expression expr)))
 
-(defmethod visitor :unary [_ expr]
+(defmethod expr-visitor :unary [_ expr]
   (let [right (evaluate (.right expr))
         op    (.operator expr)]
     (case (:token/kind op)
@@ -44,7 +62,7 @@
                (- (double right)))
       nil)))
 
-(defmethod visitor :binary [_ expr]
+(defmethod expr-visitor :binary [_ expr]
   (let [left   (evaluate (.left expr))
         right  (evaluate (.right expr))
         op     (.operator expr)
@@ -66,14 +84,19 @@
                  :else (.panic! (->RuntimeError op "Operands must be two numbers or two strings."))))
       nil)))
 
-(defmethod visitor :expression [_ stmt]
-  (evaluate (.expression stmt)))
+(defmethod stmt-visitor :expression [_ stmt]
+  (evaluate (.expression stmt))
+  nil)
 
-(defmethod visitor :print [_ stmt]
+(defmethod stmt-visitor :print
+  [_ stmt]
   (println (evaluate (.expression stmt))))
 
-(defmethod visitor :var [_ stmt]
-  (some-> (.initializer stmt) evaluate))
+(defmethod stmt-visitor :var
+  [_ stmt]
+  (let [v (some-> (.initializer stmt) evaluate)
+        k (:token/lexeme (.name stmt))]
+    {:env {:define {k v}}}))
 
 (defn interpreter:new [& {stmts :statements}]
   {:interpreter/env            (env/env:new)
@@ -81,9 +104,20 @@
    :interpreter/stmts          (or (some-> stmts not-empty vec) [])
    :interpreter/errors         []})
 
-(defn interpret [intr]
+(defn interpret [intr & {stmts :statements}]
   (try
-    (update intr :interpreter/stmts (partial mapv execute))
+    (let [stmts (or (not-empty stmts)
+                    (not-empty (:interpreter/stmts intr)))
+          base  (dissoc intr :interpreter/stmts)
+          exe   (fn [intr stmt]
+                  (let [res  (execute stmt)
+                        vars (some-> res :env
+                                     :define
+                                     not-empty
+                                     first)]
+                    (cond-> intr
+                      vars  (update :interpreter/env env/-def (key vars) (val vars)))))]
+      (reduce exe base stmts))
     (catch Exception e
       (println e)
       (-> intr

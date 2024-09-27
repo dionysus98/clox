@@ -176,8 +176,9 @@
                (parser :expression (adv psr-))
                psr-)
         psr- (consume! psr- :SEMICOLON "Expect ';' after variable declaration.")
-        expr (:parser/expr psr-)]
-    (stmt+ psr- (ast/->Var expr))))
+        expr (:parser/expr psr-)
+        varn (pk psr)]
+    (stmt+ psr- (ast/->Var varn expr))))
 
 (defmethod parser :declaration [_ psr]
   (try
