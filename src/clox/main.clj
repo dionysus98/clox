@@ -24,7 +24,7 @@
                     psr/parser:new
                     psr/parse)
         intrd  (-> (intr/interpreter:new)
-                   (intr/interpret :statements (mapv :parser/stmt parser)))
+                   (intr/interpret (mapv :parser/stmt parser)))
         lox    (-> lox
                    (assoc :lox/lexer lexer
                           :lox/parser parser
@@ -33,7 +33,7 @@
                                               (:parser/had-error? parser))
                           :lox/runtime-error? (:interpreter/runtime-error? intrd))
                    (update :lox/errors set/union (:lexer/errors lexer) (:parser/errors parser)))]
-    (util/println-> intrd)
+    ;; (util/println-> intrd)
     lox
     ;; 
     ))

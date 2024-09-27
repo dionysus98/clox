@@ -5,20 +5,6 @@
 (defn stmts+ [intr v]
   (update intr :interpreter/stmts conj v))
 
-(defn end? "is at end"
-  ^Boolean [{cur   :interpreter/current
-             stmts :interpreter/stmts}]
-  {:pre [(number? cur) (vector? stmts)]}
-  (>= cur
-      (dec (count stmts))))
-
-(defn !end? "is not at end" ^Boolean [psr]
-  (not (end? psr)))
-
-(defn adv "advance" [intr]
-  (cond-> intr
-    (!end? intr) (update :interpreter/current inc)))
-
 (defmulti expr-visitor (fn [type _] type))
 (defmulti stmt-visitor (fn [type _] type))
 
@@ -62,6 +48,9 @@
                (- (double right)))
       nil)))
 
+(defmethod expr-visitor :variable [_ expr]
+  (env/pull (.name expr)))
+
 (defmethod expr-visitor :binary [_ expr]
   (let [left   (evaluate (.left expr))
         right  (evaluate (.right expr))
@@ -81,12 +70,13 @@
                (cond
                  (?? number?) (+ left right)
                  (?? string?) (str left right)
-                 :else (.panic! (->RuntimeError op "Operands must be two numbers or two strings."))))
+                 :else (.panic! (->RuntimeError op (str "Operands must be two numbers or two strings."
+                                                        "\n\t- left  : " left
+                                                        "\n\t- right : " right)))))
       nil)))
 
 (defmethod stmt-visitor :expression [_ stmt]
-  (evaluate (.expression stmt))
-  nil)
+  (evaluate (.expression stmt)))
 
 (defmethod stmt-visitor :print
   [_ stmt]
@@ -96,30 +86,20 @@
   [_ stmt]
   (let [v (some-> (.initializer stmt) evaluate)
         k (:token/lexeme (.name stmt))]
-    {:env {:define {k v}}}))
+    (println (str "#" k))
+    (env/push k v)))
 
-(defn interpreter:new [& {stmts :statements}]
-  {:interpreter/env            (env/env:new)
+(defn interpreter:new []
+  {:interpreter/env            env/!env
    :interpreter/runtime-error? false
-   :interpreter/stmts          (or (some-> stmts not-empty vec) [])
+   :interpreter/stmts          []
    :interpreter/errors         []})
 
-(defn interpret [intr & {stmts :statements}]
+(defn interpret [intr stmts]
   (try
-    (let [stmts (or (not-empty stmts)
-                    (not-empty (:interpreter/stmts intr)))
-          base  (dissoc intr :interpreter/stmts)
-          exe   (fn [intr stmt]
-                  (let [res  (execute stmt)
-                        vars (some-> res :env
-                                     :define
-                                     not-empty
-                                     first)]
-                    (cond-> intr
-                      vars  (update :interpreter/env env/-def (key vars) (val vars)))))]
-      (reduce exe base stmts))
+    (assoc intr :interpreter/stmts (mapv execute stmts))
     (catch Exception e
       (println e)
       (-> intr
           (assoc :interpreter/runtime-error? true)
-          (update :interpreter/errors conj e)))))
+          (update :interpreter/errors conj e))))) 

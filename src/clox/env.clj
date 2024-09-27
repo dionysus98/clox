@@ -1,13 +1,23 @@
 (ns clox.env
   (:require [clox.error :refer [->RuntimeError]]))
 
-(defn -def [env name value]
-  (assoc-in env [:env/values name] value))
+;; SUBJECT TO CHANGE.
+;; the entire state of the language is maintained in an atom as a hashmap, not ideal.
 
-(defn -get [{vs :env/values} {lx :token/lexeme :as name}]
-  (if (contains? vs lx)
-    (get vs lx)
-    (.panic! (->RuntimeError name (str "undefined variable '" lx "' .")))))
+(def !env "LOX state"
+  (atom {:env/values {}}))
 
-(defn env:new []
-  {:env/values {}})
+(defn push [name value]
+  (swap! !env assoc-in [:env/values name] value))
+
+(defn pull
+  [{lx  :token/lexeme
+    :as name}]
+  (let [vs (:env/values @!env)]
+    (if (contains? vs lx)
+      (get vs lx)
+      (.panic! (->RuntimeError name (str "undefined variable '" lx "' ."))))))
+
+(defn env:new "Returns state-atom !env after it resets !env to default state" []
+  (reset! !env {:env/values {}})
+  !env)
