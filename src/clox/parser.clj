@@ -198,10 +198,9 @@
   ([psr statements]
    (try
      (if (!end? psr)
-       (let [;;  stmt- (parser :statement psr)
-             psr- (parser :declaration psr)]
+       (let [psr- (parser :declaration psr)]
          (parse psr- (conj statements psr-)))
-       statements)
+       (assoc psr :parser/stmts (mapv :parser/stmt statements)))
      (catch NullPointerException e (println e))
      (catch Exception e (ex-data e)))))
 

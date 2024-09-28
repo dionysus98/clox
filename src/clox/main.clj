@@ -16,15 +16,15 @@
    :lox/src            src
    :lox/lexer          nil})
 
-(defn run-src! [lox]
+(defn run-src! [lox & {env :env}]
   (let [lexer  (->> (:lox/src lox)
                     lex/lexer:new
                     lex/lex)
         parser (->> (:lexer/tokens lexer)
                     psr/parser:new
                     psr/parse)
-        intrd  (-> (intr/interpreter:new)
-                   (intr/interpret (mapv :parser/stmt parser)))
+        intrd  (->> (intr/interpreter:new (:parser/stmts parser) :env env)
+                    intr/interpret)
         lox    (-> lox
                    (assoc :lox/lexer lexer
                           :lox/parser parser
@@ -38,11 +38,12 @@
     ;; 
     ))
 
-(defn run-prompt! []
+(defn run-prompt! [& {env :env}]
   (print "> ")
   (flush)
   (when-let [line (-> (read-line) str/trim not-empty)]
-    (run-src! (lox:new line)) (run-prompt!)))
+    (let [lox (run-src! (lox:new line) :env env)]
+      (run-prompt! :env (-> lox :lox/interpreter :interpreter/env)))))
 
 (defn run-file! [^String file-path]
   (let [fl (io/file file-path)]

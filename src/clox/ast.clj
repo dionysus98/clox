@@ -19,14 +19,14 @@
   [ast-type fp]
   (when-let [grammar (read-grammar! fp)]
     (eval `(defprotocol ~ast-type
-             ~(list 'accept '[this visitor])))
+             ~(list 'accept '[this env visitor])))
     (doseq [pg   (not-empty grammar)
             :let [type-str (:type pg)
                   sym  (symbol type-str)
                   type (keyword (str/lower-case type-str))]]
       (eval `(deftype ~sym ~(mapv symbol (:fields pg))
                ~ast-type
-               ~(list 'accept '[this visitor] (list 'visitor type 'this)))))))
+               ~(list 'accept '[this env visitor] (list 'visitor type 'env 'this)))))))
 
 (generate-ast! 'Expr "expression")
 (generate-ast! 'Stmt "statement")

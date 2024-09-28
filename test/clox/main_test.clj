@@ -13,5 +13,6 @@
           op    (t/token:new :STAR "*" nil 1)
           right (ast/->Grouping (ast/->Literal 45.67))
           bin   (ast/->Binary left op right)
-          ast   (printer/->AstPrinter bin)]
-      (is (= (printer/print! ast) "(* (- 123) (group 45.67))")))))
+          ast   (printer/->AstPrinter bin)
+          env   {}]
+      (is (= (.print! ast env) "(* (- 123) (group 45.67))")))))

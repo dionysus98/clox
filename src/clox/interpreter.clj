@@ -5,14 +5,23 @@
 (defn stmts+ [intr v]
   (update intr :interpreter/stmts conj v))
 
-(defmulti expr-visitor (fn [type _] type))
-(defmulti stmt-visitor (fn [type _] type))
+(defn env+ [intr v]
+  (assoc intr :interpreter/env v))
 
-(defn evaluate "evaluates expression" [expr]
-  (.accept expr expr-visitor))
+(defn stmt+ [intr v]
+  (assoc intr :interpreter/stmt v))
 
-(defn execute "executes statement" [stmt]
-  (.accept stmt stmt-visitor))
+(defn expr+ [intr v]
+  (assoc intr :interpreter/expr v))
+
+(defmulti expr-visitor (fn [type _ _] type))
+(defmulti stmt-visitor (fn [type _ _] type))
+
+(defn evaluate "evaluates expression" [intr expr]
+  (.accept expr intr expr-visitor))
+
+(defn execute "executes statement" [intr stmt]
+  (.accept stmt intr stmt-visitor))
 
 (defn equal? [a b]
   (cond
@@ -32,14 +41,14 @@
   (when-not (every? number? operands)
     (.panic! (->RuntimeError operator "operands must be a numbers."))))
 
-(defmethod expr-visitor :literal [_ expr]
+(defmethod expr-visitor :literal [_ _ expr]
   (.value expr))
 
-(defmethod expr-visitor :grouping [_ expr]
-  (evaluate (.expression expr)))
+(defmethod expr-visitor :grouping [_ intr expr]
+  (evaluate intr (.expression expr)))
 
-(defmethod expr-visitor :unary [_ expr]
-  (let [right (evaluate (.right expr))
+(defmethod expr-visitor :unary [_ intr expr]
+  (let [right (evaluate intr (.right expr))
         op    (.operator expr)]
     (case (:token/kind op)
       :BANG  (not (boolean right))
@@ -48,12 +57,12 @@
                (- (double right)))
       nil)))
 
-(defmethod expr-visitor :variable [_ expr]
-  (env/pull (.name expr)))
+(defmethod expr-visitor :variable [_ intr expr]
+  (env/pull (:interpreter/env intr) (.name expr)))
 
-(defmethod expr-visitor :binary [_ expr]
-  (let [left   (evaluate (.left expr))
-        right  (evaluate (.right expr))
+(defmethod expr-visitor :binary [_ intr expr]
+  (let [left   (evaluate intr (.left expr))
+        right  (evaluate intr (.right expr))
         op     (.operator expr)
         check* (fn [] (check-num-operands* op left right))]
     (case (:token/kind op)
@@ -71,35 +80,43 @@
                  (?? number?) (+ left right)
                  (?? string?) (str left right)
                  :else (.panic! (->RuntimeError op (str "Operands must be two numbers or two strings."
-                                                        "\n\t- left  : " left
-                                                        "\n\t- right : " right)))))
+                                                        "\n\t- left  : " (pr-str left)
+                                                        "\n\t- right : " (pr-str right))))))
       nil)))
 
-(defmethod stmt-visitor :expression [_ stmt]
-  (evaluate (.expression stmt)))
+(defmethod stmt-visitor :expression [_ intr stmt]
+  (stmts+ intr (evaluate intr (.expression stmt))))
 
 (defmethod stmt-visitor :print
-  [_ stmt]
-  (println (evaluate (.expression stmt))))
+  [_ intr stmt]
+  (stmts+ intr (println (evaluate intr (.expression stmt)))))
 
 (defmethod stmt-visitor :var
-  [_ stmt]
-  (let [v (some-> (.initializer stmt) evaluate)
-        k (:token/lexeme (.name stmt))]
+  [_ intr stmt]
+  (let [v (some->> (.initializer stmt) (evaluate intr))
+        k (:token/lexeme (.name stmt))
+        e (env/push (:interpreter/env intr) k v)]
     (println (str "#" k))
-    (env/push k v)))
+    (-> intr
+        (env+ e)
+        (stmts+ nil))))
 
-(defn interpreter:new []
-  {:interpreter/env            env/!env
+(defn interpreter:new
+  [stmts & {values :values
+            env    :env}]
+  {:interpreter/env            (or (not-empty env) (env/env:new :values values))
    :interpreter/runtime-error? false
-   :interpreter/stmts          []
+   :interpreter/stmts          stmts
    :interpreter/errors         []})
 
-(defn interpret [intr stmts]
+(defn interpret [intr]
   (try
-    (assoc intr :interpreter/stmts (mapv execute stmts))
+    (let [stmts (:interpreter/stmts intr)
+          base  (assoc intr :interpreter/stmts [])
+          exe   (fn [intr stmt] (execute intr stmt))]
+      (reduce exe base stmts))
     (catch Exception e
-      (println e)
+      (println "ERROR: " (ex-message e))
       (-> intr
           (assoc :interpreter/runtime-error? true)
           (update :interpreter/errors conj e))))) 

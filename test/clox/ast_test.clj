@@ -1,34 +1,35 @@
 (ns clox.ast-test
-  (:require [clox.ast :as ast]
-            [clojure.string :as str]))
+  (:require [clojure.string :as str]))
 
 (defprotocol AstPrinterProtocol
-  (print! [printer]))
+  (print! [this env]))
 
-(defmulti print-visitor (fn [type _] type))
+(defmulti print-visitor (fn [type _ _] type))
 
-(defn parenthesize [name & exprs]
+(defn parenthesize [env name & exprs]
   (str
    "(" name " "
-   (str/join " " (map #(.accept % print-visitor) exprs))
+   (str/join " " (map #(.accept % env print-visitor) exprs))
    ")"))
 
-(defmethod print-visitor :binary [_ expr]
+(defmethod print-visitor :binary [_ env expr]
   (parenthesize
+   env
    (:token/lexeme (.operator expr))
    (.left expr) (.right expr)))
 
-(defmethod print-visitor :grouping [_ expr]
-  (parenthesize "group" (.expression expr)))
+(defmethod print-visitor :grouping [_ env expr]
+  (parenthesize env "group" (.expression expr)))
 
-(defmethod print-visitor :literal [_ expr]
+(defmethod print-visitor :literal [_ _ expr]
   (str (.value expr)))
 
-(defmethod print-visitor :unary [_ expr]
+(defmethod print-visitor :unary [_ env expr]
   (parenthesize
+   env
    (:token/lexeme (.operator expr))
    (.right expr)))
 
 (deftype AstPrinter [expr]
   AstPrinterProtocol
-  (print! [this] (.accept (.expr this) print-visitor)))
+  (print! [this env] (.accept (.expr this) env print-visitor)))
