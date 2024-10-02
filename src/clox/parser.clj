@@ -141,17 +141,29 @@
 (defmethod parser :equality [_ psr]
   (let [parse (fn >parse< [psr-]
                 (if (match psr- :BANG-EQUAL :EQUAL-EQUAL)
-                  (let [expr  (:parser/expr psr-)
-                        psr-  (adv psr-)
-                        op    (prev psr-)
+                  (let [psr-   (adv psr-)
+                        op     (prev psr-)
                         right- (parser :comparison psr-)
-                        expr  (ast/->Binary expr op (:parser/expr right-))]
+                        expr   (ast/->Binary (:parser/expr psr-) op (:parser/expr right-))]
                     (>parse< (expr+ right- expr)))
                   psr-))]
     (parse (parser :comparison psr))))
 
+(defmethod parser :assignment [_ psr]
+  (let [parse (fn >parse< [psr-]
+                (if (match psr- :EQUAL)
+                  (let [expr   (:parser/expr psr-)
+                        psr-   (adv psr-)
+                        value- (parser :assignment psr-)
+                        expr   (if (instance? clox.ast.Variable expr)
+                                 (ast/->Assign (.name expr) (:parser/expr value-))
+                                 (error! value- "Invalid assignment target."))]
+                    (>parse< (expr+ value- expr)))
+                  psr-))]
+    (parse (parser :equality psr))))
+
 (defmethod parser :expression [_ psr]
-  (parser :equality psr))
+  (parser :assignment psr))
 
 (defmethod parser :print-stmt [_ psr]
   (let [psr-  (-> (parser :expression psr)
@@ -185,9 +197,7 @@
     (cond
       (match psr :VAR) (parser :var-decl (adv psr))
       :else (parser :statement psr))
-    (catch Exception e
-      (println "Error at parser :Declaration\n"
-               e)
+    (catch Exception _
       (synchronize psr))))
 
 (defmethod parser :parser/had-error? [_ psr]

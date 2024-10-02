@@ -16,3 +16,8 @@
           ast   (printer/->AstPrinter bin)
           env   {}]
       (is (= (.print! ast env) "(* (- 123) (group 45.67))")))))
+
+(comment
+  (test #'ast-test)
+  :rcf)
+

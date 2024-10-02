@@ -1,4 +1,5 @@
-expression → equality ;
+expression → assignment ;
+assignment → IDENT "=" assignment | equality ;
 equality   → comparison ( ( "!=" | "==" ) comparison )* ;
 comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term       → factor ( ( "-" | "+" ) factor )* ;

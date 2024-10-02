@@ -1,1 +1,7 @@
-(8)
+var a = 5;
+var b = 10;
+var c = a;
+print c;                 // 5.0
+print c / a;             // 1.0
+print b * b;             // 100.0
+print a - ((a + b) * c); // -70.0
