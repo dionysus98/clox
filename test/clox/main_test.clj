@@ -6,7 +6,6 @@
 
 (deftest ast-test
   (testing "testsing AST generation."
-    #_{:clj-kondo/ignore [:unresolved-var]}
     (let [left  (ast/->Unary
                  (t/token:new :MINUS "-" nil 1)
                  (ast/->Literal 123))

@@ -46,8 +46,8 @@
    :expr (.value expr)})
 
 (defmethod expr-visitor :grouping [_ intr expr]
-  {:env  (:interpreter/env intr)
-   :expr (evaluate intr (.expression expr))})
+;; no need to return an expr map, because it evaluates an expression, which will return an expr map
+  (evaluate intr (.expression expr)))
 
 (defmethod expr-visitor :unary [_ intr expr]
   {:env  (:interpreter/env intr)
@@ -67,7 +67,8 @@
 (defmethod expr-visitor :binary [_ intr expr]
   (let [lefte  (evaluate intr (.left expr))
         left   (:expr lefte)
-        righte (evaluate (assoc intr :interpreter/env (:env lefte)) (.right expr))
+        intr   (assoc intr :interpreter/env (:env lefte))
+        righte (evaluate intr (.right expr))
         right  (:expr righte)
         op     (.operator expr)
         check* (fn [] (check-num-operands* op left right))
@@ -124,10 +125,12 @@
 (defn interpreter:new
   [stmts & {values :values
             env    :env}]
-  {:interpreter/env            (or (not-empty env) (env/env:new :values values))
-   :interpreter/runtime-error? false
-   :interpreter/stmts          stmts
-   :interpreter/errors         []})
+  (let [env (or (not-empty env)
+                (env/env:new :values values))]
+    {:interpreter/env            env
+     :interpreter/runtime-error? false
+     :interpreter/stmts          stmts
+     :interpreter/errors         []}))
 
 (defn interpret [intr]
   (try

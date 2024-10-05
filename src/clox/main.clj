@@ -1,5 +1,6 @@
 (ns clox.main
   (:gen-class)
+  #_{:clj-kondo/ignore [:unused-namespace]}
   (:require [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
