@@ -29,6 +29,9 @@
     false
     (= (:token/kind (pk psr)) token-kind)))
 
+(defn !check? ^Boolean [psr token-kind]
+  (not (check? psr token-kind)))
+
 (defn match ^Boolean [psr & token-kinds]
   (cond
     (empty? token-kinds) false
@@ -177,9 +180,22 @@
         expr (:parser/expr psr-)]
     (stmt+ psr- (ast/->Expression expr))))
 
+(defmethod parser :block [_ psr]
+  (let [[psr- stmts-] (loop [psr-   psr
+                             stmts- []]
+                        (if (and (!check? psr- :RIGHT-BRACE)
+                                 (!end? psr-))
+                          (let [psr- (parser :declaration psr-)]
+                            (recur psr- (conj stmts- psr-)))
+                          [psr- (mapv :parser/stmt stmts-)]))]
+    (-> psr-
+        (consume! :RIGHT-BRACE "Expect '}' after block.")
+        (stmt+    (ast/->Block stmts-)))))
+
 (defmethod parser :statement [_ psr]
   (cond
     (match psr :PRINT) (parser :print-stmt (adv psr))
+    (match psr :LEFT-BRACE) (parser :block (adv psr))
     :else (parser :expr-stmt psr)))
 
 (defmethod parser :var-decl [_ psr]

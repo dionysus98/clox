@@ -122,6 +122,18 @@
         (env+ e)
         (stmts+ nil))))
 
+(defmethod stmt-visitor :block
+  [_ {env :interpreter/env
+      :as intr} stmt]
+  (let [stmts (.statements stmt)
+        encl  (env/env:new :env/enclosing env)
+        base  (assoc intr :interpreter/env encl)
+        exe   (fn [intr stmt] (execute intr stmt))
+        intr  (reduce exe base stmts)]
+    (-> intr
+        (env+ env)
+        (stmts+ nil))))
+
 (defn interpreter:new
   [stmts & {values :values
             env    :env}]

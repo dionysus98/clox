@@ -2,5 +2,6 @@ program     → statement* EOF ;
 declaration → varDecl | statement ;
 varDecl     → "var" IDENT ( "=" expression )? ";" ;
 statement   → exprStmt | printStmt ;
+block       → "{" declaration* "}" ;
 exprStmt    → expression ";" ;
 printStmt   → "print" expression ";" ;

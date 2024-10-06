@@ -46,6 +46,7 @@
   #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
   (accept [this env visitor]))
 
+;; EXPRESSION
 (deftype Assign [name value]
   Visitor
   (accept [this env visitor] (visitor :assign env this)))
@@ -69,6 +70,11 @@
 (deftype Variable [name]
   Visitor
   (accept [this env visitor] (visitor :variable env this)))
+
+;; STATEMENTS
+(deftype Block [statements]
+  Visitor
+  (accept [this env visitor] (visitor :block env this)))
 
 (deftype Expression [expression]
   Visitor
