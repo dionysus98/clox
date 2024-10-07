@@ -96,7 +96,7 @@
 (defmethod expr-visitor :assign [_ intr expr]
   (let [res   (evaluate intr (.value expr))
         value (:expr res)
-        env   (:env res)]
+        env   (:env res)]    
     {:env  (env/assign env (.name expr) value)
      :expr value}))
 
@@ -129,7 +129,9 @@
         encl  (env/env:new :env/enclosing env)
         base  (assoc intr :interpreter/env encl)
         exe   (fn [intr stmt] (execute intr stmt))
-        intr  (reduce exe base stmts)]
+        intr  (reduce exe base stmts)
+        env   (:env/enclosing (:interpreter/env intr))]
+    ;; (println (:env/enclosing (:interpreter/env intr)))
     (-> intr
         (env+ env)
         (stmts+ nil))))
