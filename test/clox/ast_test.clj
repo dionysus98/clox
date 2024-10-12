@@ -1,7 +1,8 @@
 (ns clox.ast-test
   (:require [clojure.string :as str]))
 
-(defprotocol AstPrinterProtocol
+(defprotocol IAstPrinter
+  #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
   (print! [this env]))
 
 (defmulti print-visitor (fn [type _ _] type))
@@ -31,5 +32,5 @@
    (.right expr)))
 
 (deftype AstPrinter [expr]
-  AstPrinterProtocol
+  IAstPrinter
   (print! [this env] (.accept (.expr this) env print-visitor)))

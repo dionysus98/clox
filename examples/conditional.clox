@@ -1,0 +1,18 @@
+var a = 5;
+var b = 8;
+
+print a + b;
+
+if (true) {
+    var a = 8;
+    print a + b;
+}
+
+print a + b;
+
+if (true) {
+    b = 15;
+}
+
+
+print a + b;

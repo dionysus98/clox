@@ -181,19 +181,34 @@
     (stmt+ psr- (ast/->Expression expr))))
 
 (defmethod parser :block [_ psr]
-  (let [[psr- stmts-] (loop [psr-   psr
-                             stmts- []]
-                        (if (and (!check? psr- :RIGHT-BRACE)
-                                 (!end? psr-))
-                          (let [psr- (parser :declaration psr-)]
-                            (recur psr- (conj stmts- psr-)))
-                          [psr- (mapv :parser/stmt stmts-)]))]
+  (let [[psr- stmts-] ;;
+        (loop [psr-   psr
+               stmts- []]
+          (if (and (!check? psr- :RIGHT-BRACE)
+                   (!end? psr-))
+            (let [psr- (parser :declaration psr-)]
+              (recur psr- (conj stmts- psr-)))
+            [psr- (mapv :parser/stmt stmts-)]))]
     (-> psr-
         (consume! :RIGHT-BRACE "Expect '}' after block.")
         (stmt+    (ast/->Block stmts-)))))
 
+(defmethod parser :if-stmt [_ psr]
+  (let [psr-    (consume! psr :LEFT-PAREN "Expect '(' after 'if'.")
+        expr-   (-> (parser :expression psr-)
+                    (consume! :RIGHT-PAREN "Expect ')' after 'if' condition."))
+        then-   (parser :statement expr-)
+        else-   (when (match then- :ELSE)
+                  (parser :statement (adv then-)))
+        if-stmt (ast/->If
+                 (:parser/expr expr-)
+                 (:parser/stmt then-)
+                 (:parser/stmt else-))]
+    (stmt+ (or else- then-) if-stmt)))
+
 (defmethod parser :statement [_ psr]
   (cond
+    (match psr :IF)    (parser :if-stmt (adv psr))
     (match psr :PRINT) (parser :print-stmt (adv psr))
     (match psr :LEFT-BRACE) (parser :block (adv psr))
     :else (parser :expr-stmt psr)))

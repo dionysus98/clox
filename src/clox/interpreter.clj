@@ -1,6 +1,7 @@
 (ns clox.interpreter
   (:require [clox.env :as env]
-            [clox.error :refer [->RuntimeError]]))
+            [clox.error :refer [->RuntimeError]]
+            [clox.util :as util]))
 
 (defn stmts+ [intr v]
   (update intr :interpreter/stmts conj v))
@@ -93,21 +94,38 @@
     {:env  (:env righte)
      :expr expr}))
 
-(defmethod expr-visitor :assign [_ intr expr]
+(defmethod expr-visitor :assign
+  [_ intr ^clox.ast.Assign expr]
   (let [res   (evaluate intr (.value expr))
         value (:expr res)
-        env   (:env res)]    
+        env   (:env res)]
     {:env  (env/assign env (.name expr) value)
      :expr value}))
 
-(defmethod stmt-visitor :expression [_ intr stmt]
+(defmethod stmt-visitor :expression
+  [_ intr ^clox.ast.Expression stmt]
   (let [res (evaluate intr (.expression stmt))]
     (-> intr
         (env+ (:env res))
         (stmts+  (:expr res)))))
 
+(defmethod stmt-visitor :if
+  [_ intr ^clox.ast.If stmt]
+  (let [condie  (evaluate intr (.condition stmt))
+        condi   (:expr condie)
+        intr    (env+ intr (:env condie))
+        then-br (.then-branch stmt)
+        else-br (.else-branch stmt)
+        res     (cond
+                  condi   (execute intr then-br)
+                  else-br (execute intr else-br)
+                  :else   intr)]
+    (-> intr
+        (env+ (:interpreter/env res))
+        (stmts+ nil))))
+
 (defmethod stmt-visitor :print
-  [_ intr stmt]
+  [_ intr ^clox.ast.Print stmt]
   (let [res (evaluate intr (.expression stmt))]
     (-> intr
         (env+  (:env res))
