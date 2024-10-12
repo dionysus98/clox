@@ -1,0 +1,10 @@
+print "Hello world";
+
+// :D
+
+// c    print "hello world" -> 1   ~ ms
+// clox print "hello world" -> 507 ~ ms
+// js   print "hello world" -> 20  ~ ms
+// rust print "hello world" -> 1 to 5 ~ ms
+
+// :C
