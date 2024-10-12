@@ -152,6 +152,28 @@
                   psr-))]
     (parse (parser :comparison psr))))
 
+(defmethod parser :and [_ psr]
+  (let [parse (fn >parse< [psr-]
+                (if (match psr- :AND)
+                  (let [psr-   (adv psr-)
+                        op     (prev psr-)
+                        right- (parser :equality psr-)
+                        expr   (ast/->Logical (:parser/expr psr-) op (:parser/expr right-))]
+                    (>parse< (expr+ right- expr)))
+                  psr-))]
+    (parse (parser :equality psr))))
+
+(defmethod parser :or [_ psr]
+  (let [parse (fn >parse< [psr-]
+                (if (match psr- :OR)
+                  (let [psr-   (adv psr-)
+                        op     (prev psr-)
+                        right- (parser :and psr-)
+                        expr   (ast/->Logical (:parser/expr psr-) op (:parser/expr right-))]
+                    (>parse< (expr+ right- expr)))
+                  psr-))]
+    (parse (parser :and psr))))
+
 (defmethod parser :assignment [_ psr]
   (let [parse (fn >parse< [psr-]
                 (if (match psr- :EQUAL)
@@ -163,7 +185,7 @@
                                  (error! value- "Invalid assignment target."))]
                     (>parse< (expr+ value- expr)))
                   psr-))]
-    (parse (parser :equality psr))))
+    (parse (parser :or psr))))
 
 (defmethod parser :expression [_ psr]
   (parser :assignment psr))
@@ -206,12 +228,24 @@
                  (:parser/stmt else-))]
     (stmt+ (or else- then-) if-stmt)))
 
+(defmethod parser :while-stmt [_ psr]
+  (let [psr-  (consume! psr :LEFT-PAREN "Expect '(' after 'while'.")
+        expr- (-> (parser :expression psr-)
+                  (consume! :RIGHT-PAREN "Expect ')' after 'while' condition."))
+        body- (parser :statement expr-)
+        whst  (ast/->While (:parser/expr expr-)
+                           (:parser/stmt body-))]
+    (stmt+ body- whst)))
+
 (defmethod parser :statement [_ psr]
-  (cond
-    (match psr :IF)    (parser :if-stmt (adv psr))
-    (match psr :PRINT) (parser :print-stmt (adv psr))
-    (match psr :LEFT-BRACE) (parser :block (adv psr))
-    :else (parser :expr-stmt psr)))
+  (let [?? (partial match psr)
+        >> #(parser % (adv psr))]
+    (cond
+      (?? :IF)         (>> :if-stmt)
+      (?? :PRINT)      (>> :print-stmt)
+      (?? :WHILE)      (>> :while-stmt)
+      (?? :LEFT-BRACE) (>> :block)
+      :else (parser :expr-stmt psr))))
 
 (defmethod parser :var-decl [_ psr]
   (let [psr- (consume! psr :IDENT "Expect variable name.")

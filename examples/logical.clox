@@ -1,0 +1,5 @@
+print "hello"  or 2.0 ;
+print false or true and 19 ;
+print nil or "fucker" ;
+print true and "henson" and "rebecca" ;
+print false and "henson" and "rebecca" ;

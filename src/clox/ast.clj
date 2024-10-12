@@ -27,6 +27,11 @@
   (accept [this visitor] (visitor :literal this))
   (accept [this env visitor] (visitor :literal env this)))
 
+(deftype Logical [left operator right]
+  Ast
+  (accept [this visitor] (visitor :logical this))
+  (accept [this env visitor] (visitor :logical env this)))
+
 (deftype Unary [operator right]
   Ast
   (accept [this visitor] (visitor :unary this))
@@ -62,3 +67,8 @@
   Ast
   (accept [this visitor] (visitor :var this))
   (accept [this env visitor] (visitor :var env this)))
+
+(deftype While [condition body]
+  Ast
+  (accept [this visitor] (visitor :while this))
+  (accept [this env visitor] (visitor :while env this)))

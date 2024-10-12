@@ -1,7 +1,6 @@
 (ns clox.interpreter
   (:require [clox.env :as env]
-            [clox.error :refer [->RuntimeError]]
-            [clox.util :as util]))
+            [clox.error :refer [->RuntimeError]]))
 
 (defn stmts+ [intr v]
   (update intr :interpreter/stmts conj v))
@@ -46,20 +45,34 @@
   {:env  (:interpreter/env intr)
    :expr (.value expr)})
 
+(defmethod expr-visitor :logical
+  [_ intr ^clox.ast.Logical expr]
+  (let [lefte (evaluate intr (.left expr))
+        left  (:expr lefte)
+        intr  (env+ intr (:env lefte))
+        op    (:token/kind (.operator expr))
+        or?   (= op :OR)
+        left? (boolean left)]
+    (cond
+      (and or? left?)             lefte
+      (and (not or?) (not left?)) lefte
+      :else (evaluate intr (.right expr)))))
+
 (defmethod expr-visitor :grouping [_ intr expr]
 ;; no need to return an expr map, because it evaluates an expression, which will return an expr map
   (evaluate intr (.expression expr)))
 
 (defmethod expr-visitor :unary [_ intr expr]
-  {:env  (:interpreter/env intr)
-   :expr (let [right (evaluate intr (.right expr))
-               op    (.operator expr)]
-           (case (:token/kind op)
+  (let [righte (evaluate intr (.right expr))
+        right  (:expr righte)
+        op     (.operator expr)]
+    {:env  (:env righte)
+     :expr (case (:token/kind op)
              :BANG  (not (boolean right))
              :MINUS (do
                       (check-num-operand* op right)
                       (- (double right)))
-             nil))})
+             nil)}))
 
 (defmethod expr-visitor :variable [_ intr expr]
   {:env  (:interpreter/env intr)
@@ -123,6 +136,17 @@
     (-> intr
         (env+ (:interpreter/env res))
         (stmts+ nil))))
+
+(defmethod stmt-visitor :while
+  [_ intr ^clox.ast.While stmt]
+  (let [res (loop [intr intr]
+              (let [condie (evaluate intr (.condition stmt))
+                    condi  (:expr condie)
+                    intr   (env+ intr (:env condie))]
+                (if (boolean condi)
+                  (recur (execute intr (.body stmt)))
+                  intr)))]
+    (stmts+ res nil)))
 
 (defmethod stmt-visitor :print
   [_ intr ^clox.ast.Print stmt]

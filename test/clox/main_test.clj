@@ -58,20 +58,16 @@
     (let [src   "var a = 5;
                  var b = 8;
                  print a + b; // 13.0
-
                  if (true) {
                      var a = 8;
                      print a + b; // 16.0
                  }
-
                  print a + b; // 13.0
-
                   if (false) {
                       b = a;
                   } else {
                      b = 15;
                   }
-
                  print a + b; // 20.0;"
           tks   (->> src
                      lex/lexer:new
@@ -91,7 +87,8 @@
                                         (swap! !print-op conj cbuf)))
                               ([cbuf off len] nil)))]
             (let [intr (intr/interpret (intr/interpreter:new stmts))]
-              (is (= (:env/values (:interpreter/env intr)) {"a" 5.0 "b" 15.0}))
+              (is (= (:env/values (:interpreter/env intr))
+                     {"a" 5.0 "b" 15.0}))
               (is (empty? (:interpreter/errors intr)))
               (is (false? (:interpreter/runtime-error? intr)))
               (is (= ["13.0" "16.0" "13.0" "20.0"] @!print-op)))))))))
