@@ -2,7 +2,8 @@
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}}
  :aliases
  {:run-m {:main-opts ["-m" "clox.main"]}
-  :run-x {:ns-default clox.main}
+  :run-x {:ns-default clox.main
+          :exec-fn     clox.main/-main}
   :build {:deps {io.github.clojure/tools.build
                  {:git/tag "v0.9.2" :git/sha "fe6b140"}}
           :ns-default build}

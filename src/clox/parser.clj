@@ -1,5 +1,6 @@
 (ns clox.parser
-  (:require [clox.ast :as ast]))
+  (:require [clox.ast :as ast]
+            [clox.error :refer [->ParserError]]))
 
 (defn expr+ [psr expr]
   (assoc psr :parser/expr expr))
@@ -45,7 +46,7 @@
         psr  (-> psr
                  (assoc :parser/had-error? true)
                  (update :parser/errors conj info))]
-    (throw (ex-info cause psr))))
+    (.panic! (->ParserError psr info))))
 
 (defn consume! [psr token-kind msg]
   (if (check? psr token-kind)
@@ -190,13 +191,13 @@
 (defmethod parser :expression [_ psr]
   (parser :assignment psr))
 
-(defmethod parser :print-stmt [_ psr]
+(defmethod parser :print [_ psr]
   (let [psr-  (-> (parser :expression psr)
                   (consume! :SEMICOLON "Expect ';' after value."))
         value (:parser/expr psr-)]
     (stmt+ psr- (ast/->Print value))))
 
-(defmethod parser :expr-stmt [_ psr]
+(defmethod parser :expr [_ psr]
   (let [psr- (-> (parser :expression psr)
                  (consume! :SEMICOLON "Expect ';' after value."))
         expr (:parser/expr psr-)]
@@ -215,7 +216,7 @@
         (consume! :RIGHT-BRACE "Expect '}' after block.")
         (stmt+    (ast/->Block stmts-)))))
 
-(defmethod parser :if-stmt [_ psr]
+(defmethod parser :if [_ psr]
   (let [psr-    (consume! psr :LEFT-PAREN "Expect '(' after 'if'.")
         expr-   (-> (parser :expression psr-)
                     (consume! :RIGHT-PAREN "Expect ')' after 'if' condition."))
@@ -228,7 +229,7 @@
                  (:parser/stmt else-))]
     (stmt+ (or else- then-) if-stmt)))
 
-(defmethod parser :while-stmt [_ psr]
+(defmethod parser :while [_ psr]
   (let [psr-  (consume! psr :LEFT-PAREN "Expect '(' after 'while'.")
         expr- (-> (parser :expression psr-)
                   (consume! :RIGHT-PAREN "Expect ')' after 'while' condition."))
@@ -237,17 +238,44 @@
                            (:parser/stmt body-))]
     (stmt+ body- whst)))
 
+(defmethod parser :for [_ psr]
+  (let [psr-  (consume! psr :LEFT-PAREN "Expect '(' after 'for'.")
+        init- (let [?? (partial match psr-)]
+                (cond
+                  (?? :SEMICOLON) nil
+                  (?? :VAR) (parser :var (adv psr-))
+                  :else  (parser :expr (adv psr-))))
+        psr-  (or init- (adv psr-))
+        cond- (when (!check? psr- :SEMICOLON) (parser :expression psr-))
+        psr-  (-> (or cond- psr-)
+                  (consume! :SEMICOLON "Expect ';' after loop condition."))
+        inc-  (when (!check? psr- :RIGHT-PAREN) (parser :expression psr-))
+        psr-  (-> (or inc- psr-)
+                  (consume! :RIGHT-PAREN "Expect ')' after 'for' clauses."))
+        body- (parser :statement psr-)]
+    (as-> body- $
+      (if inc-
+        (stmt+ $ (ast/->Block [(:parser/stmt $) (ast/->Expression (:parser/expr inc-))]))
+        $)
+      (if-not cond-
+        (stmt+ $ (ast/->While (ast/->Literal true) (:parser/stmt $)))
+        (stmt+ $ (ast/->While (:parser/expr cond-) (:parser/stmt $))))
+      (if init-
+        (stmt+ $ (ast/->Block [(:parser/stmt init-) (:parser/stmt $)]))
+        $))))
+
 (defmethod parser :statement [_ psr]
   (let [?? (partial match psr)
         >> #(parser % (adv psr))]
     (cond
-      (?? :IF)         (>> :if-stmt)
-      (?? :PRINT)      (>> :print-stmt)
-      (?? :WHILE)      (>> :while-stmt)
+      (?? :FOR)        (>> :for)
+      (?? :IF)         (>> :if)
+      (?? :PRINT)      (>> :print)
+      (?? :WHILE)      (>> :while)
       (?? :LEFT-BRACE) (>> :block)
-      :else (parser :expr-stmt psr))))
+      :else (parser :expr psr))))
 
-(defmethod parser :var-decl [_ psr]
+(defmethod parser :var [_ psr]
   (let [psr- (consume! psr :IDENT "Expect variable name.")
         psr- (if (match psr- :EQUAL)
                (parser :expression (adv psr-))
@@ -260,7 +288,7 @@
 (defmethod parser :declaration [_ psr]
   (try
     (cond
-      (match psr :VAR) (parser :var-decl (adv psr))
+      (match psr :VAR) (parser :var (adv psr))
       :else (parser :statement psr))
     (catch Exception _
       (synchronize psr))))
@@ -277,7 +305,7 @@
          (parse psr- (conj statements psr-)))
        (assoc psr :parser/stmts (mapv :parser/stmt statements)))
      (catch NullPointerException e (println e))
-     (catch Exception e (ex-data e)))))
+     (catch Exception e (println e) (ex-data e)))))
 
 (defn parser:new [tokens]
   {:parser/current    0

@@ -198,4 +198,4 @@
       (println "ERROR:" (ex-message e))
       (-> intr
           (assoc :interpreter/runtime-error? true)
-          (update :interpreter/errors conj e))))) 
+          (update :interpreter/errors conj e)))))

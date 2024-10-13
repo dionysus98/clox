@@ -1,7 +1,13 @@
 program     → statement* EOF ;
 declaration → varDecl | statement ;
 varDecl     → "var" IDENT ( "=" expression )? ";" ;
-statement   → exprStmt | ifStmt | printStmt | whileStmt | block ;
+statement   → exprStmt | forStmt | ifStmt | printStmt | whileStmt | block ;
+forStmt     → "for" "("
+                        (varDecl | exprStmt | ";") 
+                        expression? ";"
+                        expression? 
+                    ")"
+              statement ;
 whileStmt   → "while" "(" expression ")" statement;
 ifStmt      → "if" "(" expression ")" statement ( "else" statement )? ;
 block       → "{" declaration* "}" ;
