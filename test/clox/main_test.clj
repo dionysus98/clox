@@ -93,6 +93,23 @@
               (is (false? (:interpreter/runtime-error? intr)))
               (is (= ["13.0" "16.0" "13.0" "20.0"] @!print-op)))))))))
 
+(deftest fn-parser-test
+  (let [<expr (fn [src]
+                (let [tks   (->> src
+                                 lex/lexer:new
+                                 lex/lex
+                                 :lexer/tokens)
+                      stmts (->> tks
+                                 psr/parser:new
+                                 psr/parse
+                                 :parser/stmts)]
+                  (.expression (first stmts))))]
+    (testing "fn-parser | test arguments count "
+      (let [expr (<expr "event();")]
+        (is (instance? clox.ast.Variable (.callee expr)))
+        (is (zero? (count (.arguments expr))))
+        (is (= 2 (count (<expr "event(a, b);"))))))))
+
 (comment
   (test #'ast-test)
   :rcf)

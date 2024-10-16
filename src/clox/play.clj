@@ -27,3 +27,17 @@
                  :parser/stmts)
       intr  (intr/interpreter:new stmts)]
   (intr/interpret intr))
+
+(let [src   "event(name, args, 5);"
+      tks   (->> src
+                 lex/lexer:new
+                 lex/lex
+                 :lexer/tokens)
+      stmts (->> tks
+                 psr/parser:new
+                 psr/parse
+                 :parser/stmts)
+      expr  (.expression (first stmts))]
+  ;; (count (.arguments expr))
+  ;; (instance? clox.ast.Variable (.callee expr))
+  (.value (last (.arguments expr))))

@@ -92,8 +92,34 @@
       (?? psr
           :LEFT-PAREN) (let [psr (-> (parser :expression (adv psr))
                                      (consume! :RIGHT-PAREN "Expect ')' after expression."))]
-                         (assoc psr :parser/expr (ast/->Grouping (:parser/expr psr))))
+                         (expr+ psr (ast/->Grouping (:parser/expr psr))))
       :else (error! psr "Expected Expression"))))
+
+(defn- <parse-fn-args [callee-]
+  (if (!check? callee- :RIGHT-PAREN)
+    (loop [args- []
+           psr-  (parser :expression callee-)]
+      (if (>= (count args-) 255)
+        (error! psr- "Can't have more than 255 arguments.")
+        (let [?>    (match psr- :COMMA)
+              args- (conj args- psr-)]
+          (cond
+            ?>    (recur args- (parser :expression (adv psr-)))
+            :else [(mapv :parser/expr args-) psr-]))))
+    [[] callee-]))
+
+(defn- finish-call [callee-]
+  (let [[args psr-] (<parse-fn-args callee-)
+        paren-      (consume! psr- :RIGHT-PAREN "Expect ')' after arguments.")
+        expr        (ast/->Call (:parser/expr callee-) (:parser/expr paren-) args)]
+    (expr+ paren- expr)))
+
+(defmethod parser :call [_ psr]
+  (let [psr- (parser :primary psr)]
+    (loop [psr- psr-]
+      (if (match psr- :LEFT-PAREN)
+        (recur (finish-call (adv psr-)))
+        psr-))))
 
 (defmethod parser :unary [_ psr]
   (if (match psr :BANG :MINUS)
@@ -102,7 +128,7 @@
           right- (parser :unary psr-)
           expr   (ast/->Unary op (:parser/expr right-))]
       (expr+ right- expr))
-    (parser :primary psr)))
+    (parser :call psr)))
 
 (defmethod parser :factor [_ psr]
   (let [parse (fn >parse< [psr-]
@@ -312,23 +338,3 @@
    :parser/tokens     tokens
    :parser/errors     []
    :parser/had-error? false})
-
-(comment
-  (let [tokens3 [#:token{:kind    :LEFT-PAREN
-                         :lexeme  "("
-                         :literal nil
-                         :line    1}
-                 #:token{:kind    :NUMBER
-                         :lexeme  "123"
-                         :literal 123
-                         :line    1}
-                 #:token{:kind    :RIGHT-PAREN
-                         :lexeme  ")"
-                         :literal nil
-                         :line    1}
-                 #:token{:kind    :EOF
-                         :lexeme  ""
-                         :literal nil
-                         :line    1}]]
-    (parse (parser:new tokens3)))
-  :rcf)

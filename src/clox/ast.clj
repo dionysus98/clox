@@ -17,6 +17,11 @@
   (accept [this visitor] (visitor :binary this))
   (accept [this env visitor] (visitor :binary env this)))
 
+(deftype Call [callee paren arguments]
+  Ast
+  (accept [this visitor] (visitor :call this))
+  (accept [this env visitor] (visitor :call env this)))
+
 (deftype Grouping [expression]
   Ast
   (accept [this visitor] (visitor :grouping this))

@@ -78,6 +78,31 @@
   {:env  (:interpreter/env intr)
    :expr (env/pull (:interpreter/env intr) (.name expr))})
 
+(defn- interpret-fn-args [intr ^clox.ast.Call expr]
+  (let [base {:intr intr :args []}]
+    (if-let [args-expr (not-empty (.arguments expr))]
+      (let [xfn  (fn [acc arg-expr]
+                   (let [exprI (evaluate (:intr acc) arg-expr)]
+                     (-> acc
+                         (update :intr env+ (:env exprI))
+                         (update :args conj (:expr exprI)))))]
+        (reduce xfn base args-expr))
+      base)))
+
+(defmethod expr-visitor :call
+  [_ intr ^clox.ast.Call expr]
+  (let [calleeI (evaluate intr (.callee expr))
+        callee  (:expr calleeI)
+        intr    (env+ intr (:env calleeI))
+        res     (interpret-fn-args intr expr)
+        intr    (or (:intr res) intr)
+        args    (:args res)
+        _       (when-not (instance? clox.callable.ICallable  callee)
+                  (->RuntimeError (.paren expr) "Can only call functions and classes."))
+        ;; LoxCallable function = (LoxCallable) callee;
+        ;; return function.call (this, arguments);
+        ]))
+
 (defmethod expr-visitor :binary [_ intr expr]
   (let [lefte  (evaluate intr (.left expr))
         left   (:expr lefte)
@@ -173,7 +198,6 @@
         exe   (fn [intr stmt] (execute intr stmt))
         intr  (reduce exe base stmts)
         env   (:env/enclosing (:interpreter/env intr))]
-    ;; (println (:env/enclosing (:interpreter/env intr)))
     (-> intr
         (env+ env)
         (stmts+ nil))))
@@ -186,6 +210,7 @@
     {:interpreter/env            env
      :interpreter/runtime-error? false
      :interpreter/stmts          stmts
+     :interpreter/globals        (env/env:new)
      :interpreter/errors         []}))
 
 (defn interpret [intr]

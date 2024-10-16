@@ -1,6 +1,8 @@
 (ns clox.token
   (:require [clojure.set :as set]))
 
+(deftype Token [kind lexeme literal line])
+
 (def single-char-tokens
   #{:LEFT-PAREN
     :RIGHT-PAREN
