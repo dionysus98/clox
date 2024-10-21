@@ -58,6 +58,11 @@
   (accept [this visitor] (visitor :expression this))
   (accept [this env visitor] (visitor :expression env this)))
 
+(deftype Function [name params body]
+  Ast
+  (accept [this visitor] (visitor :function this))
+  (accept [this env visitor] (visitor :function env this)))
+
 (deftype If [condition then-branch else-branch]
   Ast
   (accept [this visitor] (visitor :if this))

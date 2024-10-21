@@ -1,0 +1,8 @@
+fun addTimesTwo(b, c) {
+  var two = 2;
+  print two * (b + c);
+}
+
+addTimesTwo(2, 3);
+
+addTimesTwo(8, 9);

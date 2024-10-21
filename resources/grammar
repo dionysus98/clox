@@ -1,5 +1,8 @@
 program     → statement* EOF ;
-declaration → varDecl | statement ;
+declaration → funDecl | varDecl | statement ;
+funDecl     → "fun" function ;
+function    → IDENT "(" parameters? ")" block ;
+parameters  → IDENT ( "," IDENT )* ;
 varDecl     → "var" IDENT ( "=" expression )? ";" ;
 statement   → exprStmt | forStmt | ifStmt | printStmt | whileStmt | block ;
 forStmt     → "for" "("

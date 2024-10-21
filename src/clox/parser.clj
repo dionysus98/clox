@@ -217,13 +217,13 @@
 (defmethod parser :expression [_ psr]
   (parser :assignment psr))
 
-(defmethod parser :print [_ psr]
+(defmethod parser :print-stmt [_ psr]
   (let [psr-  (-> (parser :expression psr)
                   (consume! :SEMICOLON "Expect ';' after value."))
         value (:parser/expr psr-)]
     (stmt+ psr- (ast/->Print value))))
 
-(defmethod parser :expr [_ psr]
+(defmethod parser :expr-stmt [_ psr]
   (let [psr- (-> (parser :expression psr)
                  (consume! :SEMICOLON "Expect ';' after value."))
         expr (:parser/expr psr-)]
@@ -270,7 +270,7 @@
                 (cond
                   (?? :SEMICOLON) nil
                   (?? :VAR) (parser :var (adv psr-))
-                  :else  (parser :expr (adv psr-))))
+                  :else  (parser :expr-stmt (adv psr-))))
         psr-  (or init- (adv psr-))
         cond- (when (!check? psr- :SEMICOLON) (parser :expression psr-))
         psr-  (-> (or cond- psr-)
@@ -296,10 +296,10 @@
     (cond
       (?? :FOR)        (>> :for)
       (?? :IF)         (>> :if)
-      (?? :PRINT)      (>> :print)
+      (?? :PRINT)      (>> :print-stmt)
       (?? :WHILE)      (>> :while)
       (?? :LEFT-BRACE) (>> :block)
-      :else (parser :expr psr))))
+      :else (parser :expr-stmt psr))))
 
 (defmethod parser :var [_ psr]
   (let [psr- (consume! psr :IDENT "Expect variable name.")
@@ -311,9 +311,36 @@
         varn (pk psr)]
     (stmt+ psr- (ast/->Var varn expr))))
 
+(defn- parse-fn-params [psr-]
+  (if (!check? psr- :RIGHT-PAREN)
+    (loop [params- []
+           psr-    (consume! psr- :IDENT "Expect parameter name.")]
+      (if (>= (count params-) 255)
+        (error! (prev psr-) "Can't have more than 255 parameters.")
+        (let [?>    (match psr- :COMMA)
+              args- (conj params- psr-)]
+          (cond
+            ?>    (recur args- (consume! (adv psr-) :IDENT "Expect parameter name."))
+            :else [(mapv prev args-) psr-]))))
+    [[] psr-]))
+
+(defmethod parser :function [_ psr]
+  (let [name-  (consume! psr :IDENT "Expect function name.")
+        parsed (-> name-
+                   (consume! :LEFT-PAREN "Expect '(' after function name.")
+                   parse-fn-params)
+        params (first parsed)
+        psr-   (-> (second parsed)
+                   (consume! :RIGHT-PAREN "Expect ')' after parameters.")
+                   (consume! :LEFT-BRACE "Expect '{' before function body."))
+        body-  (parser :block psr-)
+        stmt   (ast/->Function (prev name-) params (:parser/stmt body-))]
+    (stmt+ body- stmt)))
+
 (defmethod parser :declaration [_ psr]
   (try
     (cond
+      (match psr :FUN) (parser :function (adv psr))
       (match psr :VAR) (parser :var (adv psr))
       :else (parser :statement psr))
     (catch Exception _

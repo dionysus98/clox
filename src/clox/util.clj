@@ -39,6 +39,17 @@
                   "\n----end--->\n"))
      res#))
 
+(defmacro conss
+  "```(conss 3 4 5 6 [7 8])```"
+  [& body]
+  (let [xs (last body)]
+    (assert (coll? xs)
+            (str "Invalid argument passed: " xs
+                 ". Required a collection as the final argument"))
+    (if-let [xs' (not-empty (butlast body))]
+      `(->> ~xs ~@(reverse (map (partial list 'cons) xs')))
+      xs)))
+
 (defn read-grammar!
   "Example Grammar.
    ```

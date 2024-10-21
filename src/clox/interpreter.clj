@@ -1,6 +1,7 @@
 (ns clox.interpreter
   (:require [clox.env :as env]
-            [clox.error :refer [->RuntimeError]]))
+            [clox.error :refer [->RuntimeError]]
+            [clox.callable :refer [->Clock ILoxCallable]]))
 
 (defn stmts+ [intr v]
   (update intr :interpreter/stmts conj v))
@@ -22,6 +23,22 @@
 
 (defn execute "executes statement" [intr stmt]
   (.accept stmt intr stmt-visitor))
+
+(deftype LoxFunction [declaration]
+  ILoxCallable
+  (arity [_] (count (.params declaration)))
+  (call [_ intr args]
+    (let [env (:env (reduce
+                     (fn [acc param]
+                       (-> acc
+                           (update :env env/push (:token/lexeme param) (nth args (:i acc)))
+                           (update :i inc)))
+                     {:i   0
+                      :env (env/env:new (:interpreter/globals intr))}
+                     (.params declaration)))]
+      (execute (env+ intr env) (.body declaration))))
+  Object
+  (toString [_] (str "<fn " (-> declaration .name :token/lexeme) ">")))
 
 (defn equal? [a b]
   (cond
@@ -92,16 +109,16 @@
 (defmethod expr-visitor :call
   [_ intr ^clox.ast.Call expr]
   (let [calleeI (evaluate intr (.callee expr))
-        callee  (:expr calleeI)
+        ^clox.callable.ILoxCallable callee  (:expr calleeI)
         intr    (env+ intr (:env calleeI))
         res     (interpret-fn-args intr expr)
         intr    (or (:intr res) intr)
         args    (:args res)
-        _       (when-not (instance? clox.callable.ICallable  callee)
-                  (->RuntimeError (.paren expr) "Can only call functions and classes."))
-        ;; LoxCallable function = (LoxCallable) callee;
-        ;; return function.call (this, arguments);
-        ]))
+        res     (if-not (instance? clox.callable.ILoxCallable  callee)
+                  (->RuntimeError (.paren expr) "Can only call functions and classes.")
+                  (.call callee intr args))]
+    {:env  (:interpreter/env intr)
+     :expr (:interpreter/expr res)}))
 
 (defmethod expr-visitor :binary [_ intr expr]
   (let [lefte  (evaluate intr (.left expr))
@@ -139,6 +156,13 @@
         env   (:env res)]
     {:env  (env/assign env (.name expr) value)
      :expr value}))
+
+(defmethod stmt-visitor :function
+  [_ intr ^clox.ast.Function stmt]
+  (let [lfn  (->LoxFunction stmt)
+        intr (update intr :interpreter/env
+                     env/push (:token/lexeme (.name stmt)) lfn)]
+    (stmts+ intr nil)))
 
 (defmethod stmt-visitor :expression
   [_ intr ^clox.ast.Expression stmt]
@@ -212,6 +236,9 @@
      :interpreter/stmts          stmts
      :interpreter/globals        (env/env:new)
      :interpreter/errors         []}))
+
+(defn interpreter [intr]
+  (update intr :interpreter/globals env/push "clock" (->Clock)))
 
 (defn interpret [intr]
   (try

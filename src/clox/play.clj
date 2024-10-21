@@ -1,7 +1,8 @@
  (ns clox.play
   (:require [clox.interpreter :as intr]
             [clox.lexer :as lex]
-            [clox.parser :as psr]))
+            [clox.parser :as psr]
+            [clox.env :as env]))
 
 (let [src   "var a = (7 + 8) * (7 * (8 + 9)); 
              print a;"
@@ -41,3 +42,31 @@
   ;; (count (.arguments expr))
   ;; (instance? clox.ast.Variable (.callee expr))
   (.value (last (.arguments expr))))
+
+(let [src   "fun abc(a, b, c) {
+                print a + b + c;
+             }"
+      tks   (->> src
+                 lex/lexer:new
+                 lex/lex
+                 :lexer/tokens)
+      stmts (->> tks
+                 psr/parser:new
+                 psr/parse
+                 :parser/stmts)
+      fun (first stmts)]
+  [(.name fun) (.params fun) (.body fun)])
+
+(let [src   "fun abc(a) {
+                print \"a + b + c\";
+             }"
+      tks   (->> src
+                 lex/lexer:new
+                 lex/lex
+                 :lexer/tokens)
+      stmts (->> tks
+                 psr/parser:new
+                 psr/parse
+                 :parser/stmts)
+      fun (first stmts)]
+  [(.name fun) (.params fun) (.body fun)])
