@@ -33,7 +33,7 @@
                           :lox/interpreter intrd
                           :lox/had-error? (or (:lexer/had-error? lexer)
                                               (:parser/had-error? parser))
-                          :lox/runtime-error? (:interpreter/runtime-error? intrd))
+                          :lox/runtime-error? (:intr/runtime-error? intrd))
                    (update :lox/errors set/union (:lexer/errors lexer) (:parser/errors parser)))]
     ;; (util/println-> intrd)
     lox
@@ -45,7 +45,7 @@
   (flush)
   (when-let [line (-> (read-line) str/trim not-empty)]
     (let [lox (run-src! (lox:new line) :env env)]
-      (run-prompt! :env (-> lox :lox/interpreter :interpreter/env)))))
+      (run-prompt! :env (-> lox :lox/interpreter :intr/env)))))
 
 (defn run-file! [^String file-path]
   (let [fl (io/file file-path)]

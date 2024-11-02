@@ -1,0 +1,21 @@
+var i = 18;
+
+fun makeCounter() {  
+  var i = 0;
+  fun count() {
+    i = i + 1;
+    print i;
+  }
+  return count;
+}
+
+var counter = makeCounter();
+var counterTwo = makeCounter();
+
+counter(); // "1".
+counterTwo(); // "1".
+counter(); // "2".
+counterTwo(); // "2".
+counter(); // "3".
+
+print i; //unaffected global scope

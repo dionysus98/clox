@@ -73,6 +73,11 @@
   (accept [this visitor] (visitor :print this))
   (accept [this env visitor] (visitor :print env this)))
 
+(deftype Return [keyword value]
+  Ast
+  (accept [this visitor] (visitor :return this))
+  (accept [this env visitor] (visitor :return env this)))
+
 (deftype Var [name initializer]
   Ast
   (accept [this visitor] (visitor :var this))

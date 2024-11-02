@@ -2,7 +2,8 @@
 
 (defprotocol ILoxCallable
   (arity [this])
-  (call  [this] [this interpreter arguments]))
+  (env   [this] [this interpreter])
+  (call  [this] [this interpreter] [this interpreter arguments]))
 
 (deftype Clock []
   ILoxCallable

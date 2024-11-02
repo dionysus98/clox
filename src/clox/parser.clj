@@ -217,7 +217,16 @@
 (defmethod parser :expression [_ psr]
   (parser :assignment psr))
 
-(defmethod parser :print-stmt [_ psr]
+(defmethod parser :return [_ psr]
+  (let [kw    (pk psr)
+        expr- (when (!check? psr :SEMICOLON)
+                (parser :expression psr))
+        psr-  (-> (or expr- psr)
+                  (consume! :SEMICOLON "Expect ';' after value."))
+        value (:parser/expr expr-)]
+    (stmt+ psr- (ast/->Return kw value))))
+
+(defmethod parser :print [_ psr]
   (let [psr-  (-> (parser :expression psr)
                   (consume! :SEMICOLON "Expect ';' after value."))
         value (:parser/expr psr-)]
@@ -296,7 +305,8 @@
     (cond
       (?? :FOR)        (>> :for)
       (?? :IF)         (>> :if)
-      (?? :PRINT)      (>> :print-stmt)
+      (?? :PRINT)      (>> :print)
+      (?? :RETURN)     (>> :return)
       (?? :WHILE)      (>> :while)
       (?? :LEFT-BRACE) (>> :block)
       :else (parser :expr-stmt psr))))

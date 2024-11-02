@@ -1,19 +1,30 @@
 (ns clox.interpreter
   (:require [clox.env :as env]
-            [clox.error :refer [->RuntimeError]]
+            [clox.error :refer [->RuntimeError ILoxError]]
             [clox.callable :refer [->Clock ILoxCallable]]))
 
 (defn stmts+ [intr v]
-  (update intr :interpreter/stmts conj v))
+  (update intr :intr/stmts conj v))
 
 (defn env+ [intr v]
-  (assoc intr :interpreter/env v))
+  (assoc intr :intr/env v))
+
+(defn globals+ [intr v]
+  (assoc intr :intr/globals v))
+
+(defn sync-env "syncs env + globals to the intr" [intr env]
+  (-> intr
+      (env+ env)
+      (globals+ env)))
 
 (defn stmt+ [intr v]
-  (assoc intr :interpreter/stmt v))
+  (assoc intr :intr/stmt v))
 
 (defn expr+ [intr v]
-  (assoc intr :interpreter/expr v))
+  (assoc intr :intr/expr v))
+
+(defmacro uenv "update environment" [intr & body]
+  `(update ~intr :intr/env ~@body))
 
 (defmulti expr-visitor (fn [type _ _] type))
 (defmulti stmt-visitor (fn [type _ _] type))
@@ -24,21 +35,39 @@
 (defn execute "executes statement" [intr stmt]
   (.accept stmt intr stmt-visitor))
 
-(deftype LoxFunction [declaration]
+(deftype LoxFunction [declaration closure]
   ILoxCallable
   (arity [_] (count (.params declaration)))
-  (call [_ intr args]
-    (let [env (:env (reduce
-                     (fn [acc param]
-                       (-> acc
-                           (update :env env/push (:token/lexeme param) (nth args (:i acc)))
-                           (update :i inc)))
-                     {:i   0
-                      :env (env/env:new (:interpreter/globals intr))}
-                     (.params declaration)))]
-      (execute (env+ intr env) (.body declaration))))
+  (call  [this intr args]
+    (let [callee (:token/lexeme (.name declaration))
+          env    (let [base  {:i   0
+                            ;; had to re-define var here as well. 
+                            ;; since this closure won't have access to the loxfunction var, just the scope before it.
+                              :env (env/push closure callee this)}
+                       >args (fn [acc param]
+                               (-> acc
+                                   (update :env env/push (:token/lexeme param) (nth args (:i acc)))
+                                   (update :i inc)))
+                       res   (reduce >args base (.params declaration))]
+                   (:env res))]
+      (try
+        (let [res  (execute (env+ intr env) (.body declaration))
+              nenv (:intr/env res)]
+          {:callee (LoxFunction. declaration nenv)
+           :expr   (:expr res)})
+        (catch Exception e
+          (let [data (ex-data e)]
+            (case (:cause data)
+              :return {:expr (:value data)
+                       :env  (-> data :intr :intr/env)}
+              (println (ex-message e))))))))
   Object
   (toString [_] (str "<fn " (-> declaration .name :token/lexeme) ">")))
+
+(deftype Return [intr value]
+  ILoxError
+  (panic! [_this]
+    (throw (ex-info "returnException" {:cause :return :intr intr :value value}))))
 
 (defn equal? [a b]
   (cond
@@ -59,7 +88,7 @@
     (.panic! (->RuntimeError operator "operands must be a numbers."))))
 
 (defmethod expr-visitor :literal [_ intr expr]
-  {:env  (:interpreter/env intr)
+  {:env  (:intr/env intr)
    :expr (.value expr)})
 
 (defmethod expr-visitor :logical
@@ -92,8 +121,8 @@
              nil)}))
 
 (defmethod expr-visitor :variable [_ intr expr]
-  {:env  (:interpreter/env intr)
-   :expr (env/pull (:interpreter/env intr) (.name expr))})
+  {:env  (:intr/env intr)
+   :expr (env/pull (:intr/env intr) (.name expr))})
 
 (defn- interpret-fn-args [intr ^clox.ast.Call expr]
   (let [base {:intr intr :args []}]
@@ -108,22 +137,25 @@
 
 (defmethod expr-visitor :call
   [_ intr ^clox.ast.Call expr]
-  (let [calleeI (evaluate intr (.callee expr))
+  (let [calleeN (:token/lexeme (.name (.callee expr)))
+        calleeI (evaluate intr (.callee expr))
         ^clox.callable.ILoxCallable callee  (:expr calleeI)
         intr    (env+ intr (:env calleeI))
-        res     (interpret-fn-args intr expr)
-        intr    (or (:intr res) intr)
-        args    (:args res)
+        intrpd  (interpret-fn-args intr expr)
+        intr    (:intr intrpd)
+        args    (:args intrpd)
         res     (if-not (instance? clox.callable.ILoxCallable  callee)
                   (->RuntimeError (.paren expr) "Can only call functions and classes.")
-                  (.call callee intr args))]
-    {:env  (:interpreter/env intr)
-     :expr (:interpreter/expr res)}))
+                  (.call callee intr args))
+        callee  (:callee res)]
+    {:env  (cond-> (:intr/env intr)
+             (some? callee) (env/push calleeN callee))
+     :expr (:expr res)}))
 
 (defmethod expr-visitor :binary [_ intr expr]
   (let [lefte  (evaluate intr (.left expr))
         left   (:expr lefte)
-        intr   (assoc intr :interpreter/env (:env lefte))
+        intr   (assoc intr :intr/env (:env lefte))
         righte (evaluate intr (.right expr))
         right  (:expr righte)
         op     (.operator expr)
@@ -159,16 +191,18 @@
 
 (defmethod stmt-visitor :function
   [_ intr ^clox.ast.Function stmt]
-  (let [lfn  (->LoxFunction stmt)
-        intr (update intr :interpreter/env
-                     env/push (:token/lexeme (.name stmt)) lfn)]
-    (stmts+ intr nil)))
+  (let [env (:intr/env intr)
+        lfn (->LoxFunction stmt env)
+        env (env/push env (:token/lexeme (.name stmt)) lfn)]
+    (-> intr
+        (sync-env env)
+        (stmts+ nil))))
 
 (defmethod stmt-visitor :expression
   [_ intr ^clox.ast.Expression stmt]
   (let [res (evaluate intr (.expression stmt))]
     (-> intr
-        (env+ (:env res))
+        (sync-env (:env res))
         (stmts+  (:expr res)))))
 
 (defmethod stmt-visitor :if
@@ -183,7 +217,7 @@
                   else-br (execute intr else-br)
                   :else   intr)]
     (-> intr
-        (env+ (:interpreter/env res))
+        (sync-env (:intr/env res))
         (stmts+ nil))))
 
 (defmethod stmt-visitor :while
@@ -197,33 +231,39 @@
                   intr)))]
     (stmts+ res nil)))
 
+(defmethod stmt-visitor :return
+  [_ intr ^clox.ast.Return stmt]
+  (let [vale (some->> (.value stmt) (evaluate intr))]
+    ;; short circuiting. :c
+    (.panic! (->Return intr (:expr vale)))))
+
 (defmethod stmt-visitor :print
   [_ intr ^clox.ast.Print stmt]
   (let [res (evaluate intr (.expression stmt))]
     (-> intr
-        (env+  (:env res))
+        (sync-env (:env res))
         (stmts+ (println (:expr res))))))
 
 (defmethod stmt-visitor :var
   [_ intr stmt]
   (let [v (some->> (.initializer stmt) (evaluate intr))
         k (:token/lexeme (.name stmt))
-        e (env/push (or (:env v) (:interpreter/env intr)) k (:expr v))]
+        e (env/push (or (:env v) (:intr/env intr)) k (:expr v))]
     (-> intr
-        (env+ e)
+        (sync-env e)
         (stmts+ nil))))
 
 (defmethod stmt-visitor :block
-  [_ {env :interpreter/env
+  [_ {env :intr/env
       :as intr} stmt]
   (let [stmts (.statements stmt)
         encl  (env/env:new :env/enclosing env)
-        base  (assoc intr :interpreter/env encl)
+        base  (assoc intr :intr/env encl)
         exe   (fn [intr stmt] (execute intr stmt))
-        intr  (reduce exe base stmts)
-        env   (:env/enclosing (:interpreter/env intr))]
-    (-> intr
-        (env+ env)
+        intrn (reduce exe base stmts)
+        env   (:env/enclosing (:intr/env intrn))]
+    (-> intrn
+        (sync-env env)
         (stmts+ nil))))
 
 (defn interpreter:new
@@ -231,23 +271,23 @@
             env    :env}]
   (let [env (or (not-empty env)
                 (env/env:new :values values))]
-    {:interpreter/env            env
-     :interpreter/runtime-error? false
-     :interpreter/stmts          stmts
-     :interpreter/globals        (env/env:new)
-     :interpreter/errors         []}))
+    {:intr/env            env
+     :intr/runtime-error? false
+     :intr/stmts          stmts
+     :intr/globals        env
+     :intr/errors         []}))
 
 (defn interpreter [intr]
-  (update intr :interpreter/globals env/push "clock" (->Clock)))
+  (update intr :intr/globals env/push "clock" (->Clock)))
 
 (defn interpret [intr]
   (try
-    (let [stmts (:interpreter/stmts intr)
-          base  (assoc intr :interpreter/stmts [])
+    (let [stmts (:intr/stmts intr)
+          base  (assoc intr :intr/stmts [])
           exe   (fn [intr stmt] (execute intr stmt))]
       (reduce exe base stmts))
     (catch Exception e
       (println "ERROR:" (ex-message e))
       (-> intr
-          (assoc :interpreter/runtime-error? true)
-          (update :interpreter/errors conj e)))))
+          (assoc :intr/runtime-error? true)
+          (update :intr/errors conj e)))))

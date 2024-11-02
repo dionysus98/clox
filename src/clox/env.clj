@@ -13,23 +13,24 @@
   (let [vs (:env/values env)]
     (cond
       (contains? vs lx) (push env lx value)
-      encl  (assoc env :env/enclosing (assign encl tk value))
+      encl  (update env :env/enclosing assign tk value)
       :else (undefined-var! tk lx))))
 
 (defn pull
   [{encl :env/enclosing
     :as  env}
    {lx  :token/lexeme
-    :as tk}]
+    :as tk}
+   & {safe? :safe?}]
   (let [vs (:env/values env)]
     (cond
       (contains? vs lx) (get vs lx)
-      encl (pull encl tk)
-      :else (undefined-var! tk lx))))
+      encl (pull encl tk :safe? safe?)
+      :else (when-not safe? (undefined-var! tk lx)))))
 
 (defn env:new
   [& {values :env/values
       encl   :env/enclosing}]
-  {;; enclosing is a reference to env obj
+  {;; enclosing is a also to an env obj
    :env/enclosing encl
    :env/values    (or values {})})

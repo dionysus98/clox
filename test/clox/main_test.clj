@@ -48,9 +48,9 @@
                               ([cbuf] (swap! !print-op #(or % cbuf)))
                               ([cbuf off len] nil)))]
             (let [intr (intr/interpret (intr/interpreter:new stmts))]
-              (is (= (:env/values (:interpreter/env intr)) {"a" 1785.0}))
-              (is (empty? (:interpreter/errors intr)))
-              (is (false? (:interpreter/runtime-error? intr)))
+              (is (= (:env/values (:intr/env intr)) {"a" 1785.0}))
+              (is (empty? (:intr/errors intr)))
+              (is (false? (:intr/runtime-error? intr)))
               (is (= "1785.0" @!print-op)))))))))
 
 (deftest if-statement-test
@@ -87,10 +87,10 @@
                                         (swap! !print-op conj cbuf)))
                               ([cbuf off len] nil)))]
             (let [intr (intr/interpret (intr/interpreter:new stmts))]
-              (is (= (:env/values (:interpreter/env intr))
+              (is (= (:env/values (:intr/env intr))
                      {"a" 5.0 "b" 15.0}))
-              (is (empty? (:interpreter/errors intr)))
-              (is (false? (:interpreter/runtime-error? intr)))
+              (is (empty? (:intr/errors intr)))
+              (is (false? (:intr/runtime-error? intr)))
               (is (= ["13.0" "16.0" "13.0" "20.0"] @!print-op)))))))))
 
 (deftest fn-parser-test
@@ -108,7 +108,7 @@
       (let [expr (<expr "event();")]
         (is (instance? clox.ast.Variable (.callee expr)))
         (is (zero? (count (.arguments expr))))
-        (is (= 2 (count (<expr "event(a, b);"))))))))
+        (is (= 2 (count (.arguments (<expr "event(a, b);")))))))))
 
 (comment
   (test #'ast-test)

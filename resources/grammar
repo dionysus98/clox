@@ -4,7 +4,8 @@ funDecl     → "fun" function ;
 function    → IDENT "(" parameters? ")" block ;
 parameters  → IDENT ( "," IDENT )* ;
 varDecl     → "var" IDENT ( "=" expression )? ";" ;
-statement   → exprStmt | forStmt | ifStmt | printStmt | whileStmt | block ;
+statement   → exprStmt | forStmt | ifStmt | printStmt | returnStmt | whileStmt | block ;
+returnStmt  → "return" expression? ";" ;
 forStmt     → "for" "("
                         (varDecl | exprStmt | ";") 
                         expression? ";"

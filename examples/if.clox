@@ -10,7 +10,10 @@ if (true) {
 
 print a + b;
 
-if (true) {
+if (9 < 8) {    
+    b = 500;
+} else {
+    print b;
     b = 15;
 }
 

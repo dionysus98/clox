@@ -1,8 +1,56 @@
+print "add two numbers and double it";
+
 fun addTimesTwo(b, c) {
   var two = 2;
   print two * (b + c);
 }
 
+print ">> 2 + 3";
+
 addTimesTwo(2, 3);
 
+print ">> 8 + 9";
+
 addTimesTwo(8, 9);
+
+print "count [verbose] for the given number";
+
+print ">> count 3";
+
+fun count(n) {
+  if (n > 1) count(n - 1);
+  print n;
+}
+
+count(3);
+
+print "fibonacci sequence";
+
+var a = 0;
+
+fun fib(n) {
+  if (n <= 1) return n;
+  return fib(n - 2) + fib(n - 1);
+}
+
+for (var i = 0; i < 4; i = i + 1) {  
+  print fib(i);
+  a = i + 1;
+}
+
+print ">> iter count for the fibonacci";
+print a;
+
+fun makeCounter() {
+  var i = 0;
+  fun counter() {
+    i = i + 1;
+    print i;
+  }
+  return counter;
+}
+
+var counter = makeCounter();
+var counter = makeCounter();
+counter(); // "1".
+counter(); // "2".
