@@ -70,3 +70,28 @@
                  :parser/stmts)
       fun (first stmts)]
   [(.name fun) (.params fun) (.body fun)])
+
+
+
+(let [src   "var AH = 500;
+             {    
+                 fun showA() {
+                 print AH;
+                 return AH;
+                 }
+                 
+                 showA();    
+             }
+             var k;"
+      tks   (->> src
+                 lex/lexer:new
+                 lex/lex
+                 :lexer/tokens)
+      stmts (->> tks
+                 psr/parser:new
+                 psr/parse
+                 :parser/stmts)]
+  (.initializer (last stmts)))
+
+
+#object[clox.ast.Call 0x24925405 "clox.ast.Call@24925405"]

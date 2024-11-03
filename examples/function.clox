@@ -40,17 +40,3 @@ for (var i = 0; i < 4; i = i + 1) {
 
 print ">> iter count for the fibonacci";
 print a;
-
-fun makeCounter() {
-  var i = 0;
-  fun counter() {
-    i = i + 1;
-    print i;
-  }
-  return counter;
-}
-
-var counter = makeCounter();
-var counter = makeCounter();
-counter(); // "1".
-counter(); // "2".

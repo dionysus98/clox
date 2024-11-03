@@ -1,7 +1,8 @@
 (ns clox.interpreter
   (:require [clox.env :as env]
             [clox.error :refer [->RuntimeError ILoxError]]
-            [clox.callable :refer [->Clock ILoxCallable]]))
+            [clox.callable :refer [->Clock ILoxCallable]]
+            [clox.util :as util]))
 
 (defn stmts+ [intr v]
   (update intr :intr/stmts conj v))
@@ -148,9 +149,12 @@
                   (->RuntimeError (.paren expr) "Can only call functions and classes.")
                   (.call callee intr args))
         callee  (:callee res)]
-    {:env  (cond-> (:intr/env intr)
-             (some? callee) (env/push calleeN callee))
-     :expr (:expr res)}))
+    (if-let [expr (and (map? res) (:expr res))]
+      {:env  (cond-> (:intr/env intr)
+               (some? callee) (env/push calleeN callee))
+       :expr expr}
+      {:env  (:intr/env intr)
+       :expr res})))
 
 (defmethod expr-visitor :binary [_ intr expr]
   (let [lefte  (evaluate intr (.left expr))
@@ -277,8 +281,8 @@
      :intr/globals        env
      :intr/errors         []}))
 
-(defn interpreter [intr]
-  (update intr :intr/globals env/push "clock" (->Clock)))
+(defn interpreter [{env :intr/env :as intr}]
+  (sync-env intr (env/push env "clock" (->Clock))))
 
 (defn interpret [intr]
   (try

@@ -315,7 +315,7 @@
   (let [psr- (consume! psr :IDENT "Expect variable name.")
         psr- (if (match psr- :EQUAL)
                (parser :expression (adv psr-))
-               psr-)
+               (assoc psr- :parser/expr (ast/->Literal nil)))
         psr- (consume! psr- :SEMICOLON "Expect ';' after variable declaration.")
         expr (:parser/expr psr-)
         varn (pk psr)]

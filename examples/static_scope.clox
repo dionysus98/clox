@@ -1,0 +1,23 @@
+var AH = "global";
+var k;
+
+{    
+    fun showA() {
+    print AH;
+    }
+
+    print AH;
+
+    showA();
+    var AH = "block";
+
+    print AH;
+    showA();
+
+}
+
+{       
+    print k;
+    var k = 90.0;
+    print k;
+}

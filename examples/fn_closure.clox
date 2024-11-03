@@ -12,10 +12,25 @@ fun makeCounter() {
 var counter = makeCounter();
 var counterTwo = makeCounter();
 
-counter(); // "1".
+counter();    // "1".
 counterTwo(); // "1".
-counter(); // "2".
+counter();    // "2".
 counterTwo(); // "2".
-counter(); // "3".
+counter();    // "3".
 
 print i; //unaffected global scope
+
+// Higher Order
+
+fun giveMe(executor) {
+  return executor("|-> Where's my sword?");
+}
+
+fun executor(what) {
+  print what;
+  return 0;
+}
+
+var exitCode = giveMe(executor);
+
+print exitCode;

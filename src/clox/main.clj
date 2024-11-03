@@ -26,6 +26,7 @@
                     psr/parse)
         intrd  (-> (:parser/stmts parser)
                    (intr/interpreter:new :env env)
+                   intr/interpreter
                    intr/interpret)
         lox    (-> lox
                    (assoc :lox/lexer lexer
