@@ -16,8 +16,18 @@ var k;
 
 }
 
-{       
-    print k;
-    var k = 90.0;
-    print k;
+{    
+    var AH = AH;
+    print ">> inner AH refering to global";
+    print AH;
+}
+
+var newT = "new T outer";
+
+{
+    var temp = newT;
+    var newT;
+    newT = temp;
+    
+    print newT;
 }

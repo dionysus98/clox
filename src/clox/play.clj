@@ -1,77 +1,43 @@
  (ns clox.play
   (:require [clox.interpreter :as intr]
             [clox.lexer :as lex]
-            [clox.parser :as psr]
-            [clox.env :as env]))
+            [clox.parser :as psr]))
 
-(let [src   "var a = (7 + 8) * (7 * (8 + 9)); 
-             print a;"
-      tks   (->> src
-                 lex/lexer:new
-                 lex/lex
-                 :lexer/tokens)
-      stmts (->> tks
-                 psr/parser:new
-                 psr/parse
-                 :parser/stmts)
-      intr  (intr/interpreter:new stmts)]
-  (intr/interpret intr))
+(def ^:private tokenize
+  "given the `src as string` returns lexed `tokens`"
+  (comp :lexer/tokens lex/lex lex/lexer:new))
 
-(let [src   "for (var a = 10; a > 0; a = a - 2) { print a; }"
-      tks   (->> src
-                 lex/lexer:new
-                 lex/lex
-                 :lexer/tokens)
-      stmts (->> tks
-                 psr/parser:new
-                 psr/parse
-                 :parser/stmts)
-      intr  (intr/interpreter:new stmts)]
-  (intr/interpret intr))
+(def ^:private parse
+  "given `tokens` returns **parsed** `statements`"
+  (comp :parser/stmts psr/parse psr/parser:new))
+
+(def ^:private interpret!
+  "given `statements` interprets and returns `interpreter`"
+  (comp intr/interpret intr/interpreter intr/interpreter:new))
+
+(def ^:private lox!
+  "given the `src as string` do:
+   - `tokenize` -> `parse` -> `interpret`"
+  (comp interpret! parse tokenize))
+
+(lox! "for (var a = 10; a > 0; a = a - 2) { print a; }")
+
+(lox! "var a = (7 + 8) * (7 * (8 + 9)); 
+       print a;")
 
 (let [src   "event(name, args, 5);"
-      tks   (->> src
-                 lex/lexer:new
-                 lex/lex
-                 :lexer/tokens)
-      stmts (->> tks
-                 psr/parser:new
-                 psr/parse
-                 :parser/stmts)
+      stmts (-> src tokenize parse)
       expr  (.expression (first stmts))]
-  ;; (count (.arguments expr))
-  ;; (instance? clox.ast.Variable (.callee expr))
-  (.value (last (.arguments expr))))
+  [(count (.arguments expr))
+   (instance? clox.ast.Variable (.callee expr))
+   (.value (last (.arguments expr)))])
 
 (let [src   "fun abc(a, b, c) {
                 print a + b + c;
              }"
-      tks   (->> src
-                 lex/lexer:new
-                 lex/lex
-                 :lexer/tokens)
-      stmts (->> tks
-                 psr/parser:new
-                 psr/parse
-                 :parser/stmts)
+      stmts (-> src tokenize parse)
       fun (first stmts)]
   [(.name fun) (.params fun) (.body fun)])
-
-(let [src   "fun abc(a) {
-                print \"a + b + c\";
-             }"
-      tks   (->> src
-                 lex/lexer:new
-                 lex/lex
-                 :lexer/tokens)
-      stmts (->> tks
-                 psr/parser:new
-                 psr/parse
-                 :parser/stmts)
-      fun (first stmts)]
-  [(.name fun) (.params fun) (.body fun)])
-
-
 
 (let [src   "var AH = 500;
              {    
@@ -83,15 +49,5 @@
                  showA();    
              }
              var k;"
-      tks   (->> src
-                 lex/lexer:new
-                 lex/lex
-                 :lexer/tokens)
-      stmts (->> tks
-                 psr/parser:new
-                 psr/parse
-                 :parser/stmts)]
+      stmts (-> src tokenize parse)]
   (.initializer (last stmts)))
-
-
-#object[clox.ast.Call 0x24925405 "clox.ast.Call@24925405"]

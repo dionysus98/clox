@@ -24,3 +24,7 @@ var AH = "outer";
     let AH = "inner";
     console.log(AH);
 }
+
+var AH = 87;
+
+console.log(AH)
