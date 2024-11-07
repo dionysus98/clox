@@ -17,15 +17,6 @@
       (env+ env)
       (globals+ env)))
 
-(defn stmt+ [intr v]
-  (assoc intr :intr/stmt v))
-
-(defn expr+ [intr v]
-  (assoc intr :intr/expr v))
-
-(defmacro uenv "update environment" [intr & body]
-  `(update ~intr :intr/env ~@body))
-
 (defmulti expr-visitor (fn [_ expr] (type expr)))
 (defmulti stmt-visitor (fn [_ stmt] (type stmt)))
 
@@ -158,12 +149,9 @@
                   (->RuntimeError (.paren expr) "Can only call functions and classes.")
                   (.call callee intr args))
         callee  (:callee res)]
-    (if-let [expr (and (map? res) (:expr res))]
-      {:env  (cond-> (:intr/env intr)
-               (some? callee) (env/push calleeN callee))
-       :expr expr}
-      {:env  (:intr/env intr)
-       :expr res})))
+    {:env  (cond-> (:intr/env intr)
+             (some? callee) (env/push calleeN callee))
+     :expr (:expr res)}))
 
 (defn- binary-operation [op left right]
   (if (= (:token/kind op) :PLUS)
