@@ -1,18 +1,19 @@
 (ns clox.interpreter
   (:require [clox.env :as env]
-            [clox.error :refer [->RuntimeError ILoxError]]
-            [clox.callable :refer [->Clock ILoxCallable]]))
+            [clox.error :refer [->RuntimeError]]
+            [clox.callable :refer [->Clock]]
+            [clox.function :refer [->LoxFunction ->Return]]))
 
-(defn stmts+ [intr v]
+(defn- stmts+ [intr v]
   (update intr :intr/stmts conj v))
 
-(defn env+ [intr v]
+(defn- env+ [intr v]
   (assoc intr :intr/env v))
 
-(defn globals+ [intr v]
+(defn- globals+ [intr v]
   (assoc intr :intr/globals v))
 
-(defn sync-env "syncs env + globals to the intr" [intr env]
+(defn- sync-env "syncs env + globals to the intr" [intr env]
   (-> intr
       (env+ env)
       (globals+ env)))
@@ -20,60 +21,26 @@
 (defmulti expr-visitor (fn [_ expr] (type expr)))
 (defmulti stmt-visitor (fn [_ stmt] (type stmt)))
 
-(defn evaluate "evaluates expression" [intr expr]
+(defn- evaluate "evaluates expression" [intr expr]
   (.accept expr intr expr-visitor))
 
-(defn execute "executes statement" [intr stmt]
+(defn- execute "executes statement" [intr stmt]
   (.accept stmt intr stmt-visitor))
 
-(deftype LoxFunction [declaration closure]
-  ILoxCallable
-  (arity [_] (count (.params declaration)))
-  (call  [this intr args]
-    (let [callee (:token/lexeme (.name declaration))
-          env    (let [base  {:i   0
-                            ;; had to re-define var here as well. 
-                            ;; since this closure won't have access to the loxfunction var, just the scope before it.
-                              :env (env/push closure callee this)}
-                       >args (fn [acc param]
-                               (-> acc
-                                   (update :env env/push (:token/lexeme param) (nth args (:i acc)))
-                                   (update :i inc)))
-                       res   (reduce >args base (.params declaration))]
-                   (:env res))]
-      (try
-        (let [res  (execute (env+ intr env) (.body declaration))
-              nenv (:intr/env res)]
-          {:callee (LoxFunction. declaration nenv)
-           :expr   (:expr res)})
-        (catch Exception e
-          (let [data (ex-data e)]
-            (case (:cause data)
-              :return {:expr (:value data)
-                       :env  (-> data :intr :intr/env)}
-              (println (ex-message e))))))))
-  Object
-  (toString [_] (str "<fn " (-> declaration .name :token/lexeme) ">")))
-
-(deftype Return [intr value]
-  ILoxError
-  (panic! [_this]
-    (throw (ex-info "returnException" {:cause :return :intr intr :value value}))))
-
-(defn equal? [a b]
+(defn- equal? [a b]
   (cond
     (and (nil? a) (nil? b)) true
     (nil? a) false
     :else (= a b)))
 
-(defn !equal? [a b]
+(defn- !equal? [a b]
   (not (equal? a b)))
 
-(defn check-num-operand* [operator operand]
+(defn- check-num-operand* [operator operand]
   (when-not (number? operand)
     (.panic! (->RuntimeError operator "operand must be a number."))))
 
-(defn check-num-operands*
+(defn- check-num-operands*
   [operator & operands]
   (when-not (every? number? operands)
     (.panic! (->RuntimeError operator "operands must be a numbers."))))
@@ -285,15 +252,14 @@
         (stmts+ nil))))
 
 (defn interpreter:new
-  [stmts & {values :values
-            env    :env}]
-  (let [env (or (not-empty env)
-                (env/env:new :values values))]
-    {:intr/env            env
-     :intr/runtime-error? false
-     :intr/stmts          stmts
-     :intr/globals        env
-     :intr/errors         []}))
+  [stmts & {env :env}]
+  {:intr/env            (or (not-empty env) (env/env:new))
+   :intr/runtime-error? false
+   :intr/stmts          stmts
+   :intr/globals        env
+   :intr/execute        execute
+   :intr/evaluate       evaluate
+   :intr/errors         []})
 
 (defn interpreter [{env :intr/env :as intr}]
   (sync-env intr (env/push env "clock" (->Clock))))

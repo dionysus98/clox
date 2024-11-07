@@ -15,8 +15,8 @@ var counterTwo = makeCounter();
 counter();    // "1".
 counterTwo(); // "1".
 counter();    // "2".
-counterTwo(); // "2".
 counter();    // "3".
+counterTwo(); // "2".
 
 print i; //unaffected global scope
 
