@@ -3,35 +3,40 @@
             [clox.ast]))
 
 (defprotocol IAstPrinter
-  #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
-  (print! [this env]))
+  (print! [this]))
 
-(defmulti print-visitor (fn [_ expr] (type expr)))
+(defmulti print-visitor type)
 
-(defn parenthesize [env name & exprs]
+(defn parenthesize [name & exprs]
   (str
    "(" name " "
-   (str/join " " (map #(.accept % env print-visitor) exprs))
+   (str/join " " (map #(.accept % print-visitor) exprs))
    ")"))
 
-(defmethod print-visitor clox.ast.Binary [env expr]
+(defmethod print-visitor
+  clox.ast.Binary
+  [expr]
   (parenthesize
-   env
    (:token/lexeme (.operator expr))
    (.left expr) (.right expr)))
 
-(defmethod print-visitor clox.ast.Grouping [env expr]
-  (parenthesize env "group" (.expression expr)))
+(defmethod print-visitor
+  clox.ast.Grouping
+  [expr]
+  (parenthesize "group" (.expression expr)))
 
-(defmethod print-visitor clox.ast.Literal [_ expr]
+(defmethod print-visitor
+  clox.ast.Literal
+  [expr]
   (str (.value expr)))
 
-(defmethod print-visitor clox.ast.Unary [env expr]
+(defmethod print-visitor
+  clox.ast.Unary
+  [expr]
   (parenthesize
-   env
    (:token/lexeme (.operator expr))
    (.right expr)))
 
 (deftype AstPrinter [expr]
   IAstPrinter
-  (print! [this env] (.accept (.expr this) env print-visitor)))
+  (print! [this] (.accept (.expr this) print-visitor)))
