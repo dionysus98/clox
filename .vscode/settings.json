@@ -1,0 +1,26 @@
+{
+    "calva.replConnectSequences": [
+        {
+            "projectType": "deps.edn",
+            "cljsType": "none",
+            "name": "lox",
+            "autoSelectForJackIn": true,
+            "menuSelections": {
+                "cljAliases": [
+                    "dev"
+                ]
+            },
+            "jackInEnv": {
+                "DEV": true
+            },
+            "projectRootPath": [
+                "."
+            ],
+            "afterCLJReplJackInCode": [
+                "(require '[clox.main :as lox] :reload)",
+                "(lox/lox! [:dev])",
+                ":ok",
+            ]
+        }
+    ]
+}
