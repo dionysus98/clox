@@ -37,4 +37,4 @@
 (deftype Return [intr value]
   ILoxError
   (panic! [_this]
-    (throw (ex-info "returnException" {:cause :return :intr intr :value value}))))
+    (throw (ex-info "->Return" {:cause :return :intr intr :value value}))))

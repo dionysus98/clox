@@ -28,6 +28,20 @@
       encl (pull encl tk :safe? safe?)
       :else (when-not safe? (undefined-var! tk lx)))))
 
+(defn ancestor [env ^Integer distance]
+  (let [reach    (repeat distance :env/enclosing)
+        enclosed (get-in env reach)]
+    enclosed))
+
+(defn pull-at [env ^Integer distance ^String name]
+  (-> (ancestor env distance)
+      :env/values
+      (get name)))
+
+(defn assign-at [env ^Integer distance tk value]
+  (let [reach    (repeat (dec distance) :env/enclosing)]
+    (update-in env reach assoc (:token/lexeme tk) value)))
+
 (defn env:new
   [& {values :env/values
       encl   :env/enclosing}]

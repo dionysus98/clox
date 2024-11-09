@@ -1,4 +1,5 @@
 (ns clox.interpreter
+  (:refer-clojure :exclude [resolve])
   (:require [clox.env :as env]
             [clox.error :refer [->RuntimeError]]
             [clox.callable :refer [->Clock]]
@@ -26,6 +27,9 @@
 
 (defn- execute "executes statement" [intr stmt]
   (.accept stmt intr stmt-visitor))
+
+(defn- resolve [intr expr depth]  
+  (assoc-in intr [:intr/locals expr] depth))
 
 (defn- equal? [a b]
   (cond
@@ -85,11 +89,25 @@
                       (- (double right)))
              nil)}))
 
+#_(defmethod expr-visitor
+    clox.ast.Variable
+    [intr ^clox.ast.Variable expr]
+    {:env  (:intr/env intr)
+     :expr (env/pull (:intr/env intr) (.name expr))})
+
+(defn lookup-var [intr tk expr]
+  (println {:env  (:intr/env intr)
+            :tk   (:token/lexeme tk)
+            :dist (get-in intr [:intr/locals expr])})
+  (if-let [dist (get-in intr [:intr/locals expr])]
+    (env/pull-at (:intr/env intr) dist (:token/lexeme tk))
+    (env/pull (:intr/env intr) tk)))
+
 (defmethod expr-visitor
   clox.ast.Variable
   [intr ^clox.ast.Variable expr]
   {:env  (:intr/env intr)
-   :expr (env/pull (:intr/env intr) (.name expr))})
+   :expr (lookup-var intr (.name expr) expr)})
 
 (defn- interpret-fn-args [intr ^clox.ast.Call expr]
   (let [base {:intr intr :args []}]
@@ -158,13 +176,24 @@
     {:env  (:env righte)
      :expr expr}))
 
+#_(defmethod expr-visitor
+    clox.ast.Assign
+    [intr ^clox.ast.Assign expr]
+    (let [res   (evaluate intr (.value expr))
+          value (:expr res)
+          env   (:env res)]
+      {:env  (env/assign env (.name expr) value)
+       :expr value}))
+
 (defmethod expr-visitor
   clox.ast.Assign
   [intr ^clox.ast.Assign expr]
   (let [res   (evaluate intr (.value expr))
         value (:expr res)
         env   (:env res)]
-    {:env  (env/assign env (.name expr) value)
+    {:env  (if-let [dist (get (:intr/locals intr) expr)]
+             (env/assign-at env dist (.name expr) value)
+             (env/assign env (.name expr) value))
      :expr value}))
 
 (defmethod stmt-visitor
@@ -257,8 +286,10 @@
    :intr/runtime-error? false
    :intr/stmts          stmts
    :intr/globals        env
+   :intr/locals         {}
    :intr/execute        execute
    :intr/evaluate       evaluate
+   :intr/resolve        resolve
    :intr/errors         []})
 
 (defn interpreter [{env :intr/env :as intr}]

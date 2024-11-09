@@ -7,7 +7,9 @@
             [clox.util :as util]
             [clox.lexer :as lex]
             [clox.parser :as psr]
-            [clox.interpreter :as intr]))
+            [clox.resolver :as resl]
+            [clox.interpreter :as intr]
+            [clojure.pprint :as pprint]))
 
 (defn lox:new [src & {fp :file-path}]
   {:lox/had-error?     false
@@ -18,24 +20,27 @@
    :lox/lexer          nil})
 
 (defn run-src! [lox & {env :env}]
-  (let [lexer  (->> (:lox/src lox)
-                    lex/lexer:new
-                    lex/lex)
-        parser (->> (:lexer/tokens lexer)
-                    psr/parser:new
-                    psr/parse)
-        intrd  (-> (:parser/stmts parser)
-                   (intr/interpreter:new :env env)
-                   intr/interpreter
-                   intr/interpret)
-        lox    (-> lox
-                   (assoc :lox/lexer lexer
-                          :lox/parser parser
-                          :lox/interpreter intrd
-                          :lox/had-error? (or (:lexer/had-error? lexer)
-                                              (:parser/had-error? parser))
-                          :lox/runtime-error? (:intr/runtime-error? intrd))
-                   (update :lox/errors set/union (:lexer/errors lexer) (:parser/errors parser)))]
+  (let [lexer    (->> (:lox/src lox)
+                      lex/lexer:new
+                      lex/lex)
+        parser   (->> (:lexer/tokens lexer)
+                      psr/parser:new
+                      psr/parse)
+        intr     (-> (:parser/stmts parser)
+                     (intr/interpreter:new :env env)
+                     intr/interpreter)
+        resolver (-> (resl/resl:new :interpreter intr)
+                     (resl/resolve (:parser/stmts parser)))
+        ;; _ (clojure.pprint/pprint (:resl/intr resolver))
+        intrd    (intr/interpret (:resl/intr resolver))
+        lox      (-> lox
+                     (assoc :lox/lexer lexer
+                            :lox/parser parser
+                            :lox/interpreter intrd
+                            :lox/had-error? (or (:lexer/had-error? lexer)
+                                                (:parser/had-error? parser))
+                            :lox/runtime-error? (:intr/runtime-error? intrd))
+                     (update :lox/errors set/union (:lexer/errors lexer) (:parser/errors parser)))]
     ;; (util/println-> intrd)
     lox
     ;; 

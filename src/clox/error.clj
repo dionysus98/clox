@@ -10,4 +10,8 @@
 
 (deftype ParserError [psr message]
   ILoxError
-  (panic! [_this] (throw (Exception. (str message)))))
+  (panic! [_this] (throw (ex-info (str message) psr))))
+
+(deftype ResolverError [resl message]
+  ILoxError
+  (panic! [_this] (throw (ex-info message resl))))
