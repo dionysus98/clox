@@ -117,9 +117,14 @@
 (defmethod parser :call [_ psr]
   (let [psr- (parser :primary psr)]
     (loop [psr- psr-]
-      (if (match psr- :LEFT-PAREN)
-        (recur (finish-call (adv psr-)))
-        psr-))))
+      (cond
+        (match psr- :LEFT-PAREN) (recur (finish-call (adv psr-)))
+        (match psr- :DOT)
+        (recur (let [next- (adv psr-)]
+                 (-> next-
+                     (consume! :IDENT "Expect property name after '.'")
+                     (expr+ (ast/->Get (:parser/expr psr-) (pk next-))))))
+        :else psr-))))
 
 (defmethod parser :unary [_ psr]
   (if (match psr :BANG :MINUS)
@@ -334,10 +339,14 @@
             :else [(mapv prev args-) psr-]))))
     [[] psr-]))
 
-(defmethod parser :function [_ psr]
-  (let [name-  (consume! psr :IDENT "Expect function name.")
+(defmethod parser :function
+  [_ {method? :method?
+      :as     psr}]
+  (let [kind   (if method? "method" "function")
+        name-  (-> (dissoc psr :method?)
+                   (consume! :IDENT (str "Expect " kind " name.")))
         parsed (-> name-
-                   (consume! :LEFT-PAREN "Expect '(' after function name.")
+                   (consume! :LEFT-PAREN (str "Expect '(' after " kind " name."))
                    parse-fn-params)
         params (first parsed)
         psr-   (-> (second parsed)
@@ -347,13 +356,29 @@
         stmt   (ast/->Function (prev name-) params (:parser/stmt body-))]
     (stmt+ body- stmt)))
 
+(defmethod parser :class [_ psr]
+  (let [name-          (consume! psr :IDENT "Expect class name.")
+        parsed         (consume! name- :LEFT-BRACE "Expect '{' after class body.")
+        [psr- methods] ;;
+        (loop [psr-    parsed
+               methods []]
+          (if (and (!check? psr- :RIGHT-BRACE) (!end? psr))
+            (let [psr- (parser :function (assoc psr- :method? true))]
+              (recur psr- (conj methods psr-)))
+            [psr- (mapv :parser/stmt methods)]))
+        end-           (consume! psr- :RIGHT-BRACE "Expect '}' after class body.")
+        stmt           (ast/->LoxClass (prev name-) methods)]
+    (stmt+ end- stmt)))
+
 (defmethod parser :declaration [_ psr]
   (try
     (cond
-      (match psr :FUN) (parser :function (adv psr))
-      (match psr :VAR) (parser :var (adv psr))
+      (match psr :CLASS) (parser :class (adv psr))
+      (match psr :FUN)   (parser :function (adv psr))
+      (match psr :VAR)   (parser :var (adv psr))
       :else (parser :statement psr))
-    (catch Exception _
+    (catch Exception e
+      (println (ex-message e))
       (synchronize psr))))
 
 (defmethod parser :parser/had-error? [_ psr]
@@ -362,13 +387,10 @@
 (defn parse
   ([psr] (parse psr []))
   ([psr statements]
-   (try
-     (if (!end? psr)
-       (let [psr- (parser :declaration psr)]
-         (parse psr- (conj statements psr-)))
-       (assoc psr :parser/stmts (mapv :parser/stmt statements)))
-     (catch NullPointerException e (println e))
-     (catch Exception e (println e) (ex-data e)))))
+   (if (!end? psr)
+     (let [psr- (parser :declaration psr)]
+       (parse psr- (conj statements psr-)))
+     (assoc psr :parser/stmts (mapv :parser/stmt statements)))))
 
 (defn parser:new [tokens]
   {:parser/current    0

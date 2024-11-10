@@ -1,8 +1,10 @@
 (ns clox.interpreter
+  (:refer-clojure :exclude [class])
   (:require [clox.env :as env]
             [clox.error :refer [->RuntimeError]]
             [clox.callable :refer [->Clock]]
-            [clox.function :refer [->LoxFunction ->Return]]))
+            [clox.function :refer [->LoxFunction ->Return]]
+            [clox.class :refer [->LoxClass]]))
 
 (defn- stmts+ [intr v]
   (update intr :intr/stmts conj v))
@@ -176,6 +178,15 @@
     (-> intr
         (sync-env env)
         (stmts+ nil))))
+
+(defmethod stmt-visitor
+  clox.ast.LoxClass
+  [intr ^clox.ast.LoxClass stmt]
+  (let [cname (:token/lexeme (.name stmt))
+        env   (env/push (:intr/env intr) cname nil)
+        class (->LoxClass cname)
+        env   (env/assign env (.name stmt) class)]
+    (-> intr (sync-env env) (stmts+ nil))))
 
 (defmethod stmt-visitor
   clox.ast.Expression

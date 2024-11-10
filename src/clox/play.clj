@@ -51,3 +51,44 @@
              var k;"
       stmts (-> src tokenize parse)]
   (.initializer (last stmts)))
+
+(let [src   "class Breakfast {
+                cook() {
+                  print \"Eggs a-fryin'!\";
+               } 
+
+               serve(who) {
+                 print \"Enjoy your breakfast, \" + who + \".\";
+               }
+             }"
+      stmts (-> src tokenize parse)
+      class (first stmts)]
+  [(.name class) (mapv #(vector (.name %) (.params %) (.body %)) (.methods class))])
+
+(let [src   "class Breakfast {
+                cook() {
+                  print \"Eggs a-fryin'!\";
+               } 
+
+               serve(who) {
+                 print \"Enjoy your breakfast, \" + who + \".\";
+               }
+             }"
+      stmts (-> src tokenize parse)
+      class (first stmts)]
+  [(.name class) (mapv #(vector (.name %) (.params %) (.body %)) (.methods class))])
+
+(lox! "class Well {}
+       var oh = Well();
+       print oh;")
+
+(let [src    "class Breakfast {
+                cook() {
+                  print \"Eggs a-fryin'!\";
+               } 
+             }
+             var bf = Breakfast();
+             bf.cook();"
+      stmts  (-> src tokenize parse)
+      callee (.callee (.expression (last stmts)))]
+  [(.object callee) (.name callee)])

@@ -1,10 +1,8 @@
 (ns clox.main
   (:gen-class)
-  #_{:clj-kondo/ignore [:unused-namespace]}
   (:require [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clox.util :as util]
             [clox.lexer :as lex]
             [clox.parser :as psr]
             [clox.interpreter :as intr]))
@@ -59,6 +57,7 @@
 (defn lox! [args]
   (let [argc (count args)]
     (cond
+      (:dev (set args)) (run-src! (lox:new "print \"Hello, world!\";\n"))
       (> argc 1) (do
                    (println "Usage: clox [lexipt]")
                    (System/exit 64))

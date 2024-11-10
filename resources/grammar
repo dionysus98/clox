@@ -1,5 +1,6 @@
 program     → statement* EOF ;
-declaration → funDecl | varDecl | statement ;
+declaration → classDecl | funDecl | varDecl | statement ;
+classDecl   → "class" IDENT "{" function* "}" ;
 funDecl     → "fun" function ;
 function    → IDENT "(" parameters? ")" block ;
 parameters  → IDENT ( "," IDENT )* ;
@@ -26,6 +27,6 @@ comparison  → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term        → factor ( ( "-" | "+" ) factor )* ;
 factor      → unary ( ( "/" | "*" ) unary )* ;
 unary       → ( "!" | "-" ) unary | call ;
-call        → primary ( "(" arguments? ")" )* ;
-arguments  → expression ( "," expression )* ;
+call        → primary ( "(" arguments? ")" | "." IDENT )* ;
+arguments   → expression ( "," expression )* ;
 primary     → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENT ;

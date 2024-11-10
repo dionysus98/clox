@@ -22,6 +22,11 @@
   (accept [this visitor] (visitor this))
   (accept [this env visitor] (visitor env this)))
 
+(deftype Get [object name]
+  Ast
+  (accept [this visitor] (visitor this))
+  (accept [this env visitor] (visitor env this)))
+
 (deftype Grouping [expression]
   Ast
   (accept [this visitor] (visitor this))
@@ -49,6 +54,11 @@
 
   ;; STATEMENTS
 (deftype Block [statements]
+  Ast
+  (accept [this visitor] (visitor this))
+  (accept [this env visitor] (visitor env this)))
+
+(deftype LoxClass [name methods]
   Ast
   (accept [this visitor] (visitor this))
   (accept [this env visitor] (visitor env this)))
