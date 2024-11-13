@@ -68,6 +68,19 @@
       :else (evaluate intr (.right expr)))))
 
 (defmethod expr-visitor
+  clox.ast.Set
+  [intr ^clox.ast.Set expr]
+  (let [objI  (evaluate intr (.object expr))
+        obj   (if (instance? clox.class.LoxInstance (:expr objI))
+                (:expr objI)
+                (->RuntimeError (.name expr) "Only instances have fields."))
+        valI  (-> (env+ intr (:env objI))
+                  (evaluate (.value expr)))
+        value (.set obj (.name expr) (:expr valI))]
+    {:expr value
+     :env  (:env valI)}))
+
+(defmethod expr-visitor
   clox.ast.Grouping
   [intr ^clox.ast.Grouping expr]
 ;; no need to return an expr map, because it evaluates an expression, which will return an expr map
@@ -121,6 +134,18 @@
     {:env  (cond-> (:intr/env intr)
              (some? callee) (env/push calleeN callee))
      :expr (:expr res)}))
+
+(defmethod expr-visitor
+  clox.ast.Get
+  [intr ^clox.ast.Get expr]
+  (let [objI (evaluate intr (.object expr))
+        obj  (:expr objI)
+        env  (:env objI )
+        res  (if (instance? clox.class.LoxInstance obj)
+               (.get obj (.name expr))
+               (->RuntimeError (.name expr) "Only instances have properties.]"))]
+    {:env  env
+     :expr res}))
 
 (defn- binary-operation [op left right]
   (if (= (:token/kind op) :PLUS)
@@ -182,10 +207,17 @@
 (defmethod stmt-visitor
   clox.ast.LoxClass
   [intr ^clox.ast.LoxClass stmt]
-  (let [cname (:token/lexeme (.name stmt))
-        env   (env/push (:intr/env intr) cname nil)
-        class (->LoxClass cname)
-        env   (env/assign env (.name stmt) class)]
+  (let [cname   (:token/lexeme (.name stmt))
+        env     (env/push (:intr/env intr) cname nil)
+        methods (reduce
+                 (fn [ms m]
+                   (let [fun (->LoxFunction m env)
+                         lx  (:token/lexeme (.name m))]
+                     (assoc ms lx fun)))
+                 {}
+                 (.methods stmt))
+        class   (->LoxClass cname methods)
+        env     (env/assign env (.name stmt) class)]
     (-> intr (sync-env env) (stmts+ nil))))
 
 (defmethod stmt-visitor

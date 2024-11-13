@@ -212,9 +212,12 @@
                   (let [expr   (:parser/expr psr-)
                         psr-   (adv psr-)
                         value- (parser :assignment psr-)
-                        expr   (if (instance? clox.ast.Variable expr)
+                        expr   (cond
+                                 (instance? clox.ast.Variable expr)
                                  (ast/->Assign (.name expr) (:parser/expr value-))
-                                 (error! value- "Invalid assignment target."))]
+                                 (instance? clox.ast.Get expr)
+                                 (ast/->Set (.object expr) (.name expr) (:parser/expr value-))
+                                 :else (error! value- "Invalid assignment target."))]
                     (>parse< (expr+ value- expr)))
                   psr-))]
     (parse (parser :or psr))))
