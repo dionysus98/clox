@@ -18,7 +18,7 @@
 (def ^:private lox!
   "given the `src as string` do:
    - `tokenize` -> `parse` -> `interpret`"
-  (comp interpret! parse tokenize))
+  (comp (constantly :done) interpret! parse tokenize))
 
 (lox! "for (var a = 10; a > 0; a = a - 2) { print a; }")
 
@@ -92,3 +92,45 @@
       stmts  (-> src tokenize parse)
       callee (.callee (.expression (last stmts)))]
   [(.object callee) (.name callee)])
+
+(lox!
+ "class Egotist {
+    speak() {
+      print this;
+    }
+  }
+                 
+  var method = Egotist().speak;
+  method();")
+
+(lox! "class Thing {
+           getCallback() {
+             fun localFunction() {
+              print this;
+             }              
+             return localFunction;
+           }
+         }
+              
+       var callback = Thing().getCallback();
+       callback();")
+
+
+(lox!
+ "class Cake {
+  taste() {            
+     var adjective = \"delicious\"; 
+     print adjective;
+     print \"The \" + this.flavor + \" cake is \" + adjective + \"!\";
+   }
+ }
+  // instance
+  var cake = Cake();
+
+  cake.flavor = \"German chocolate\";  
+  cake.taste();
+  cake.flavor = \"English chocolate\";
+  cake.taste();
+
+  fun notMeto() { print this; }
+  notMeto();")

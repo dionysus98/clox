@@ -88,6 +88,7 @@
       (?? psr
           :NUMBER
           :STRING)    (p> psr (ast/->Literal (:token/literal (pk psr))))
+      (?? psr :THIS)  (p> psr (ast/->This (pk psr)))
       (?? psr :IDENT) (p> psr (ast/->Variable (pk psr)))
       (?? psr
           :LEFT-PAREN) (let [psr (-> (parser :expression (adv psr))

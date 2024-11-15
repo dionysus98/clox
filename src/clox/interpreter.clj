@@ -73,12 +73,22 @@
   (let [objI  (evaluate intr (.object expr))
         obj   (if (instance? clox.class.LoxInstance (:expr objI))
                 (:expr objI)
-                (->RuntimeError (.name expr) "Only instances have fields."))
+                (.panic! (->RuntimeError (.name expr) "Only instances have fields.")))
         valI  (-> (env+ intr (:env objI))
                   (evaluate (.value expr)))
-        value (.set obj (.name expr) (:expr valI))]
+        value (.push obj (.name expr) (:expr valI))
+        env   (env/assign (:env valI) (.name (.object expr)) value)]
     {:expr value
-     :env  (:env valI)}))
+     :env  env}))
+
+(defmethod expr-visitor
+  clox.ast.This
+  [intr ^clox.ast.This expr]  
+  (let [env   (:intr/env intr)
+        value (env/pull env (.keyword expr))]
+    ;; (println {:env env :value value})
+    {:expr value
+     :env  env}))
 
 (defmethod expr-visitor
   clox.ast.Grouping
@@ -128,7 +138,7 @@
         intr    (:intr intrpd)
         args    (:args intrpd)
         res     (if-not (instance? clox.callable.ILoxCallable  callee)
-                  (->RuntimeError (.paren expr) "Can only call functions and classes.")
+                  (.panic! (->RuntimeError (.paren expr) "Can only call functions and classes."))
                   (.call callee intr args))
         callee  (:callee res)]
     {:env  (cond-> (:intr/env intr)
@@ -139,11 +149,11 @@
   clox.ast.Get
   [intr ^clox.ast.Get expr]
   (let [objI (evaluate intr (.object expr))
-        obj  (:expr objI)
-        env  (:env objI )
-        res  (if (instance? clox.class.LoxInstance obj)
-               (.get obj (.name expr))
-               (->RuntimeError (.name expr) "Only instances have properties.]"))]
+        objV (:expr objI)
+        env  (:env objI)
+        res  (if (instance? clox.class.LoxInstance objV)
+               (.pull objV (.name expr))
+               (.panic! (->RuntimeError (.name expr) "Only instances have properties.")))]
     {:env  env
      :expr res}))
 

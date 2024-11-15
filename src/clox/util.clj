@@ -50,7 +50,7 @@
       `(->> ~xs ~@(reverse (map (partial list 'cons) xs')))
       xs)))
 
-(defn read-grammar!
+(defn ^:deprecated read-grammar!
   "Example Grammar.
    ```
       Literal  : Object value
@@ -70,7 +70,7 @@
         {:type   k
          :fields fields}))))
 
-(defn build-ast
+(defn ^:deprecated build-ast
   "builds protocol and types based on the grammar provided. :c
    - `(build-ast 'Expr \"expression\")`
    - `(build-ast 'Stmt \"statement\")`"
@@ -89,7 +89,7 @@
            (cons proto)
            (cons 'do)))))
 
-(defn generate-ast!
+(defn ^:deprecated generate-ast!
   "defines protocol and types based on the grammar provided. :c
    - `(generate-ast! 'Expr \"expression\")`
    - `(generate-ast! 'Stmt \"statement\")`"

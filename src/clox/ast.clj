@@ -47,6 +47,11 @@
   (accept [this visitor] (visitor this))
   (accept [this env visitor] (visitor env this)))
 
+(deftype This [keyword]
+  Ast
+  (accept [this visitor] (visitor this))
+  (accept [this env visitor] (visitor env this)))
+
 (deftype Unary [operator right]
   Ast
   (accept [this visitor] (visitor this))

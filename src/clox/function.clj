@@ -4,6 +4,9 @@
    [clox.env :as env]
    [clox.error :refer [ILoxError]]))
 
+(defprotocol ILoxFunction
+  (bind [this lox-instance]))
+
 (deftype LoxFunction [declaration closure]
   ILoxCallable
   (arity [_] (count (.params declaration)))
@@ -31,6 +34,16 @@
               :return {:expr (:value data)
                        :env  (-> data :intr :intr/env)}
               (println (ex-message e))))))))
+
+  ILoxFunction
+  (bind [this lox-instance]
+    (let [decl   (.declaration this)
+          callee (:token/lexeme (.name decl))
+          env    (-> (.closure this)
+                     (env/push callee this)
+                     (env/push "this" lox-instance))]
+      (LoxFunction. decl env)))
+
   Object
   (toString [_] (str "<fn " (-> declaration .name :token/lexeme) ">")))
 

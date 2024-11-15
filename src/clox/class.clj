@@ -1,12 +1,12 @@
 (ns clox.class
-  (:refer-clojure :exclude [class get set])
+  (:refer-clojure :exclude [class])
   (:require
    [clox.callable :refer [ILoxCallable]]
    [clox.error :refer [->RuntimeError]]))
 
 (defprotocol ILoxInstance
-  (get [this name-token])
-  (set [this name-token value]))
+  (pull [this name-token])
+  (push [this name-token value]))
 
 (defprotocol ILoxClass
   (find-method [this name]))
@@ -16,16 +16,16 @@
   (toString [_] (str (.name class) " instance"))
 
   ILoxInstance
-  (get [_ {lx  :token/lexeme
-           :as name-token}]
+  (pull [this {lx  :token/lexeme
+               :as name-token}]
     (if (contains? fields lx)
       (get fields lx)
       (if-some [method (.find-method class lx)]
-        method
-        (->RuntimeError name-token (str "undefined property " lx)))))
+        (.bind method this)
+        (.panic! (->RuntimeError name-token (str "undefined property " lx))))))
 
-  (set [this {lx :token/lexeme} value]
-    (->LoxInstance (.class this) (assoc (.fields this) lx value))))
+  (push [this {lx :token/lexeme} value]
+    (LoxInstance. (.class this) (assoc (.fields this) lx value))))
 
 (deftype LoxClass [name methods]
   ILoxClass
@@ -35,7 +35,7 @@
   ILoxCallable
   (arity [_] 0)
   (call  [this]
-    {:expr (->LoxInstance this {})})
+    {:expr   (LoxInstance. this {})})
   (call  [this _ _]
     (.call this))
   Object
