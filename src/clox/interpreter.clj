@@ -83,10 +83,9 @@
 
 (defmethod expr-visitor
   clox.ast.This
-  [intr ^clox.ast.This expr]  
+  [intr ^clox.ast.This expr]
   (let [env   (:intr/env intr)
         value (env/pull env (.keyword expr))]
-    ;; (println {:env env :value value})
     {:expr value
      :env  env}))
 

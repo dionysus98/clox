@@ -134,3 +134,21 @@
 
   fun notMeto() { print this; }
   notMeto();")
+
+
+(let [src    "var a = 50;
+              
+              class Breakfast {              
+                 init() {
+                   print a;
+                 }
+                 pop() {
+                 print 909;
+              print a;
+                  }
+             }
+             var bf = Breakfast();
+             bf.pop();"
+      stmts  (-> src tokenize parse)]
+  (interpret! stmts)
+  :done)

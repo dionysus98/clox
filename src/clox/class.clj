@@ -33,10 +33,14 @@
     (when (contains? methods name)
       (get methods name)))
   ILoxCallable
-  (arity [_] 0)
-  (call  [this]
-    {:expr   (LoxInstance. this {})})
-  (call  [this _ _]
-    (.call this))
+  (arity [this]
+    (or (some-> this (.find-method "init") .arity)
+        0))
+  (call  [this intr args]
+    (let [ins  (LoxInstance. this {})
+          init (some-> (.find-method this "init")
+                       (.bind ins)
+                       (.call intr args))]
+      {:expr ins}))
   Object
   (toString [_] (str name)))
