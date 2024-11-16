@@ -1,4 +1,4 @@
-(ns clox.function 
+(ns clox.function
   (:require
    [clox.callable :refer [ILoxCallable]]
    [clox.env :as env]
@@ -26,7 +26,8 @@
         (let [exe  (:intr/execute intr)
               res  (exe (assoc intr :intr/env env) (.body declaration))
               nenv (:intr/env res)]
-          {:callee (LoxFunction. declaration nenv)
+          {:env    nenv
+           :callee (LoxFunction. declaration nenv)
            :expr   (:expr res)})
         (catch Exception e
           (let [data (ex-data e)]

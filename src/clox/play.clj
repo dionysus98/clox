@@ -137,18 +137,37 @@
 
 
 (let [src    "var a = 50;
-              
-              class Breakfast {              
+
+              class Breakfast {
                  init() {
+                   a = a + 98;
                    print a;
                  }
+
                  pop() {
-                 print 909;
-              print a;
-                  }
-             }
-             var bf = Breakfast();
-             bf.pop();"
+                   print 909;
+                   a = a + 10;
+                   print a;
+                }
+              }
+
+              var bf = Breakfast();
+              bf.pop();
+              print a;"
       stmts  (-> src tokenize parse)]
+  (interpret! stmts)
+  :done)
+
+
+(let [src   "var a = 50;
+             fun pop() {
+              //  var a = 100;
+               print 909;
+               a = a + 10;
+               print a;
+             }
+             pop();
+             print a;"
+      stmts (-> src tokenize parse)]
   (interpret! stmts)
   :done)

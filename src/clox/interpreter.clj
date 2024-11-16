@@ -140,8 +140,19 @@
                   (.panic! (->RuntimeError (.paren expr) "Can only call functions and classes."))
                   (.call callee intr args))
         callee  (:callee res)]
+    
+    (println {:res (loop [env  (:env res)]
+                     (if (:env/enclosing env)
+                       (recur (:env/enclosing env))
+                       env))
+              :old (loop [env  (:intr/env intr)]
+                     (if (:env/enclosing env)
+                       (recur (:env/enclosing env))
+                       env))})
+
     {:env  (cond-> (:intr/env intr)
-             (some? callee) (env/push calleeN callee))
+             (some? callee) (env/push calleeN callee)
+             :always (update :env/values merge (:env/values (:env res))))
      :expr (:expr res)}))
 
 (defmethod expr-visitor

@@ -29,13 +29,14 @@ print "fibonacci sequence";
 var a = 0;
 
 fun fib(n) {
+  a = a + 90;
   if (n <= 1) return n;
   return fib(n - 2) + fib(n - 1);
 }
 
 for (var i = 0; i < 4; i = i + 1) {  
   print fib(i);
-  a = i + 1;
+  // a = i + 1;
 }
 
 print ">> iter count for the fibonacci";

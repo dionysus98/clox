@@ -36,7 +36,7 @@
   (arity [this]
     (or (some-> this (.find-method "init") .arity)
         0))
-  (call  [this intr args]
+  (call [this intr args]
     (let [ins  (LoxInstance. this {})
           init (some-> (.find-method this "init")
                        (.bind ins)
